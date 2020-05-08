@@ -1,18 +1,42 @@
 
 
+/*----------------------------------------------------------------
+2020/05/08修改：
+	增加了退出AT模式、重启以太网模块、模块恢复出厂设置、AT指令查询配置参数这4个功能
+
+
+------------------------------------------------------------------*/
+
+
 #ifndef __USRK6_H__
 #define __USRK6_H__
 
 #include "sys.h"
 
-
-#define MaxRx5Len 50
+#define MaxCommandLen 80	//AT指令最长字符数
+#define MaxRx5Len 50	//
 extern char UART5_RX_BUF[MaxRx5Len];//串口5接收缓存
 extern u16 UART5_RX_STA;
 
 void USRK6Init(u32 bound);
-u8 EnterAT(void);
+u8 EnterAT(void);//进入AT模式
+u8 ExitAT(void );//退出AT模式
+u8 Reboot(void);//重启模块
+u8 ManufacturerReset(void);//恢复出厂设置
 u8 ATControl(char *str,char *ack);
+u8 ATQuery(char *Command,char *Respond);//查询配置参数
+
+u8 ConfigWANN(char *Mode,char *Address,char *Mask,char *Gateway);
+u8 ConfigUART(char *BaudRate,char *DataBits,char *StopBits,char *Parity,char *Flowctrl);
+u8 ConfigSOCK(char *Protocol,char *IP,char *Port);
+
+
+
+
+
+
+
+
 
 #endif
 
