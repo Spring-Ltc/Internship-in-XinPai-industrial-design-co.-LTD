@@ -1,0 +1,8 @@
+".\Objects\main.obj",
+".\Objects\EEPROM.obj",
+".\Objects\GPIO.obj",
+".\Objects\timer.obj",
+".\Objects\USART1.obj",
+".\Objects\TaskUart.obj" 
+TO ".\Objects\SlaveCode" 
+PRINT(".\Listings\SlaveCode.m51") RAMSIZE(256) 

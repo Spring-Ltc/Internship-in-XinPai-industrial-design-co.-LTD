@@ -1,0 +1,7 @@
+"main.obj",
+"GPIO.obj",
+"timer.obj",
+"USART1.obj",
+"EEPROM.obj" 
+TO "MAINCONTROL" 
+RAMSIZE(256) 

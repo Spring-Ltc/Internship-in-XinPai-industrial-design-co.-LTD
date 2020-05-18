@@ -1,0 +1,12 @@
+".\Objects\delay.obj",
+".\Objects\EEPROM.obj",
+".\Objects\GPIO.obj",
+".\Objects\Soft_UART.obj",
+".\Objects\timer.obj",
+".\Objects\USART.obj",
+".\Objects\main.obj",
+".\Objects\TaskUart.obj",
+".\Objects\TimeProcess.obj",
+".\Objects\TaskState.obj" 
+TO ".\Objects\SlaveCodeV2" 
+PRINT(".\Listings\SlaveCodeV2.m51") RAMSIZE(256) 
