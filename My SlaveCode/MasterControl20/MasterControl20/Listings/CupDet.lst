@@ -1,0 +1,882 @@
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE CUPDET
+OBJECT MODULE PLACED IN CupDet.obj
+COMPILER INVOKED BY: C:\Program Files (x86)\Spring Program Files(x86)\MDK4 and MDK5\C51\BIN\C51.EXE procedure\CupDet.c L
+                    -ARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\CupDet.lst) TABS(2) OBJECT(CupDet.obj)
+
+line level    source
+
+   1          
+   2          
+   3          
+   4          #include "CupDet.h"
+   5          
+   6          //extern  u8 TX1_Buffer[32];//´æ´¢ÒªÉÏ´«µÄÊý¾ÝScanCounter1
+   7          u8 Cup1Eff=0;//½ÓÊÕ±­×ÓÓÐÐ§ »º³åÇø
+   8          u8 Cup3Eff=0; //½ÓÊÕ±­×ÓÓÐÐ§ »º³åÇø//½ÓÊÕ±­×ÓÓÐÐ§ »º³åÇø
+   9          u8 Cup5Eff=0; //½ÓÊÕ±­×ÓÓÐÐ§ »º³åÇø
+  10          
+  11          u8  Timer10MSCounter11=0,Timer10MSCounter12=0,Timer10MSCounter13=0,Timer10MSCounter14=0,Timer10MSCounter15
+             -=0;  //¼ÆÊý10MS±êÖ¾
+  12          u8  TimerOut=0,TimerOut1=0,TimerOut2=0,TimerOut3=0,TimerOut4=0,TimerOut5=0;//¶¨Ê±Êä³ö
+  13          u16 ScanCounter1, ScanCounter2, ScanCounter3, ScanCounter4, ScanCounter5;ExvalveCounter;//´«¸ÐÆ÷±êÖ¾|¼ÆÊýÆ
+             -÷
+  14          
+  15          u8 ExitData1=1;ExitData2=1;ExitData3=1;ExitData4=1;ExitData5=1;//±êÖ¾
+  16          
+  17          u8 MaxDrawingWaterTimes=120;//×î³¤³éË®Ê±¼ä120 
+  18          u8 CupOffDrawinWaterTimes=6; //±­×ÓÀë¿ªºó³éË®Ê±¼ä 100MS
+  19          
+  20          u8 Cup1Status   =0;//1ÎÞ±­×Ó
+  21          u8 Cup5Status   =0;//5ÎÞ±­×Ó
+  22          u8 Cup3Status   =0;//3ÎÞ±­×Ó
+  23          
+  24          u8 Cup1Waiting=0,Cup1Runing=0,Cup1Ending=0;Cup1EndingDraw=0;//×´Ì¬ÅÐ¶Ï/ÔËÐÐ/½áÊø/½áÊø±êÖ¾
+  25          u8 Cup5Waiting=0,Cup5Runing=0,Cup5Ending=0;Cup5EndingDraw=0;
+  26          u8 Cup3Waiting=0,Cup3Runing=0,Cup3Ending=0;Cup3EndingDraw=0;
+  27          u16 SurplusCount;//±­×ÓÔÚ±¾´Î¿ª»úÔËÐÐÊ±¶Ô¶Ô±­×ÓÊ¹ÓÃ¼ÆÊý
+  28          
+  29          void  CupDetconfig(void)  //×Ô¼ì³õÊ¼»¯
+  30             {
+  31   1         
+  32   1               //×Ô¼ì
+  33   1               Pump1=VALVEOFF;// OFF PMUP
+  34   1               Pump5=VALVEOFF;// OFF PMUP 
+  35   1               Pump3=VALVEOFF;// OFF PMUP
+  36   1               EXValve1=VALVEOFF;
+  37   1               EXValve5=VALVEOFF;
+  38   1               EXValve3=VALVEOFF;  
+  39   1               SPARE=VALVEOFF;
+  40   1               CapSensor=VALVEOFF; //¹©µç5V¹Ø
+  41   1      
+  42   1      
+  43   1            /*******************±Ã×Ô¼ì  Ë®Á÷·§·½Ê½*********************************/
+  44   1      
+  45   1             Pump1=VALVEON;//¿ªPMUP1
+  46   1             Pump5=VALVEON;//¿ªPMUP2
+  47   1             Pump3=VALVEON;//¿ªPMUP3
+  48   1             Delay1000ms();
+  49   1             Delay1000ms();
+  50   1             EXValve1=VALVEON;
+  51   1             EXValve5=VALVEON;
+  52   1             EXValve3=VALVEON;
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 2   
+
+  53   1             Delay1000ms(); 
+  54   1             Delay1000ms();
+  55   1             Delay1000ms(); 
+  56   1      
+  57   1             Delay50ms();
+  58   1             Pump1=VALVEOFF;// OFF PMUP
+  59   1             Pump5=VALVEOFF;// OFF PMUP 
+  60   1             Pump3=VALVEOFF;// OFF PMUP
+  61   1             EXValve1=VALVEOFF;
+  62   1             EXValve5=VALVEOFF;
+  63   1             EXValve3=VALVEOFF;
+  64   1             
+  65   1             
+  66   1             Delay1000ms();
+  67   1             CapSensor=VALVEON; //¹©µç5V¹Ø
+  68   1             
+  69   1             
+  70   1      
+  71   1            Cup1Waiting=0;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;//×´Ì¬ÅÐ¶Ï/ÔËÐÐ/½áÊø/½áÊø±êÖ¾|¸³Öµ
+  72   1            Cup5Waiting=0;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;
+  73   1            Cup3Waiting=0;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;
+  74   1         
+  75   1           
+  76   1         
+  77   1         }
+  78             
+  79             
+  80          void PumpControl()
+  81          {
+  82   1          if((Cup1Status==1) && ((MasterDataBuff[12]==0x01) || (MasterDataBuff[12]==0x02)))//ÓÐ±­×Ó×´Ì¬È·¶¨ÊÇ·ñ¿ªÆ
+             -ô±Ã 
+  83   1              Pump1=1;
+  84   1             else 
+  85   1             {    
+  86   2                Pump1=0;//¹Ø±Ã
+  87   2                if(MasterDataBuff[12] == 0)     
+  88   2                {
+  89   3                    EXValve1=VALVEON;               //ÅÅ¿Õ·§¶¯×÷
+  90   3                    Delay1000ms();Delay1000ms();Delay1000ms();    //ÑÓÊ±1s
+  91   3                    EXValve1=VALVEOFF;            //¹Ø·§ÃÅ
+  92   3                    MasterDataBuff[12] = 0x03;
+  93   3                } 
+  94   2             }
+  95   1           
+  96   1          if((Cup3Status==1) && ((MasterDataBuff[13]==0x01) || (MasterDataBuff[13]==0x02)))//ÓÐ±­×Ó×´Ì¬È·¶¨ÊÇ·ñ¿ªÆ
+             -ô±Ã 
+  97   1              Pump3=1;
+  98   1             else 
+  99   1             {    
+ 100   2                Pump1=0;//¹Ø±Ã
+ 101   2                if(MasterDataBuff[13] == 0)     
+ 102   2                {
+ 103   3                    EXValve3=VALVEON;               //ÅÅ¿Õ·§¶¯×÷
+ 104   3                    Delay1000ms();Delay1000ms();Delay1000ms();    //ÑÓÊ±1s
+ 105   3                    EXValve3=VALVEOFF;            //¹Ø·§ÃÅ
+ 106   3                    MasterDataBuff[13] = 0x03;
+ 107   3                } 
+ 108   2             }
+ 109   1           
+ 110   1             
+ 111   1          if((Cup5Status==1) && ((MasterDataBuff[14]==0x01) || (MasterDataBuff[14]==0x02)))//ÓÐ±­×Ó×´Ì¬È·¶¨ÊÇ·ñ¿ªÆ
+             -ô±Ã 
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 3   
+
+ 112   1              Pump5=1;
+ 113   1             else 
+ 114   1             {    
+ 115   2                Pump5=0;//¹Ø±Ã
+ 116   2                if(MasterDataBuff[14] == 0)     
+ 117   2                {
+ 118   3                    EXValve5=VALVEON;               //ÅÅ¿Õ·§¶¯×÷
+ 119   3                    Delay1000ms();Delay1000ms();Delay1000ms();    //ÑÓÊ±1s
+ 120   3                    EXValve5=VALVEOFF;            //¹Ø·§ÃÅ
+ 121   3                    MasterDataBuff[14] = 0x03;
+ 122   3                } 
+ 123   2             }
+ 124   1             
+ 125   1      //       
+ 126   1      //          if(Cup3Status==1)//ÓÐ±­×Ó×´Ì¬È·¶¨ÊÇ·ñ¿ªÆô±Ã
+ 127   1      //              { 
+ 128   1      //               Pump3=1;// 
+ 129   1      //              }
+ 130   1      //             else Pump3=0;//¹Ø±Ã
+ 131   1      //          if(Cup5Status==1)//ÓÐ±­×Ó×´Ì¬È·¶¨ÊÇ·ñ¿ªÆô±Ã
+ 132   1      //              { 
+ 133   1      //               Pump5=1;// 
+ 134   1      //              }
+ 135   1      //             else Pump5=0;//¹Ø±Ã
+ 136   1      }
+ 137          
+ 138          void CupDet()
+ 139           {
+ 140   1        
+ 141   1         
+ 142   1      /******************************CUP1¹¦ÄÜ´¦Àí***********************************/
+ 143   1      /******************************CUP1¹¦ÄÜ´¦Àí***********************************/
+ 144   1      if(Cup1Eff==1)
+ 145   1      {
+ 146   2           if(Cup1Waiting)                                                       //ÓÉÓÚÏµÍ³×Ô¼ì½«cup1waiting ÖÃ1
+             -ÁË
+ 147   2           { 
+ 148   3             Cup1Waiting=1;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;GLED1=ON; //½øÈë¼ì²â×´Ì¬|ÎÞÔËÐÐ|GLED1´ò¿ª
+ 149   3           
+ 150   3             if(SensorCup(1)==Exist)                                           //¼ì²âµ½ÓÐ±­×Ó·ÅÈë|µ÷ÓÃº¯ÊýSensorCup
+             - ·µ»ØexitdataÖµ  Exist´¦ÖµÎª1
+ 151   3              {
+ 152   4                Cup1Runing=1;                                                 //¿ªÊ¼±êÖ¾ÖÃ1
+ 153   4                Cup1Waiting=0;                                               //Í£Ö¹µÈ´ý
+ 154   4                GLED1=OFF;                                                  //GLED1¹Ø±Õ
+ 155   4                ScanCounter1=0;
+ 156   4                TimerOut1=0;
+ 157   4              }     
+ 158   3           }  
+ 159   2           
+ 160   2           if(Cup1Runing)                                              //ÔËÐÐÊ±ÅÐ¶ÏÓÐÎÞË®Á÷
+ 161   2           {
+ 162   3             Cup1Waiting=0;Cup1Runing=1;Cup1Ending=0;Cup1EndingDraw=0;
+ 163   3             RLED1=ON;
+ 164   3             Cup1Status=1;                                          //¿ª±Ã
+ 165   3            // Pump1=1;
+ 166   3            if (ScanCounter1>=WaitingWaterTimeOut&&(TimerOut1==0)) //µÈ´ýÀ´Ë®Ê±¼ä200 10s  400 20s ¶Ï¶ÏÐøÐøÀ´Ë®  
+             -WaitingWaterTimeOut = 22
+ 167   3                {   
+ 168   4                 ScanCounter1=0;
+ 169   4                 TimerOut1=1;
+ 170   4                }
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 4   
+
+ 171   3                
+ 172   3                
+ 173   3            if(Water1Sensor==0)                               //ÎÞË® Water1SensorÍâ½Ó´«¸ÐÆ÷ÅÐ¶Ï
+ 174   3                   { Timer10MSCounter11++;                     //ÎÞË® ¼ÆÊýÆ÷
+ 175   4                                                                 //  TX1_write2buff(Timer10MSCounter11);  
+ 176   4                   
+ 177   4                     if(Timer10MSCounter11>=SensorWaterTimeOut)     //SensorWaterTimeOut = 28 µÚ¶þ´ÎÀ´Ë®ÓëÎÞË®¼ÆÊýÆ÷Ïà±
+             -È
+ 178   4                       { ExitData1=0;Timer10MSCounter11=0; }                
+ 179   4                   } 
+ 180   3            if(Water1Sensor==1)                                       //ÓÐË®
+ 181   3                   {ExitData1=1; Timer10MSCounter11=0;
+ 182   4                   } 
+ 183   3          
+ 184   3      //Ç°3¸öIF ×¼±¸ÅÐ¶Ï×´Ì¬  //£¨exitdata ÎªÎÞË®Ê±µÄµÈÓÚNoExist£©=1 Óë TimerOut1=1
+ 185   3                   
+ 186   3           if((( ExitData1==NoExist)&&(TimerOut1))||SensorCupOut(1)==NoExist )//¼ì²âµ½ÎÞ Ë®Á÷  Ôö¼ÓÖ±½ÓÄÃ±­×ÓºóÍ
+             -£»ú 
+ 187   3          
+ 188   3                 { 
+ 189   4                  //PrintString1("No1\r\n"); 
+ 190   4                  TimerOut1=1;   
+ 191   4                  Cup1Runing=0;
+ 192   4                  Cup1Ending=1;
+ 193   4                  RLED1=OFF;  
+ 194   4                  Cup1Status=VALVEOFF;            //±ÃÍ££¬ÒªÖ´ÐÐºóÃæ³ÌÐòºóÍ£
+ 195   4                  Pump1=0;                         //¼±Í£±Ã;  
+ 196   4                  Delay50ms();  
+ 197   4                  EXValve1=VALVEON;               //ÅÅ¿Õ·§¶¯×÷
+ 198   4                  
+ 199   4                  Delay1000ms();                 //ÑÓÊ±1s
+ 200   4                   
+ 201   4                  EXValve1=VALVEOFF;            //¹Ø·§ÃÅ
+ 202   4                   
+ 203   4         
+ 204   4                 }else {TimerOut1=0; Cup1Runing=1; }
+ 205   3                         
+ 206   3           }
+ 207   2          if(Cup1Ending)
+ 208   2            { 
+ 209   3              TimerOut1=0;
+ 210   3              Cup1Waiting=0;Cup1Runing=0;Cup1Ending=1;Cup1EndingDraw=0;
+ 211   3              
+ 212   3              GLED1=~GLED1;
+ 213   3              RLED1=~RLED1;
+ 214   3             // PrintString1("C1End \r\n"); 
+ 215   3             
+ 216   3             if(SensorCupOut(1)==NoExist) //¼ì²âµ½±­×ÓÒÑ¾­ÄÃ¿ª|ËùÓÐ´«¸ÐÆ÷ºÍledµÆÈ«²¿»Øµ½Ô­Ê¼×´Ì¬|½áÊø±êÖ¾Îª¸ß
+ 217   3              { 
+ 218   4                 SurplusCount+=1;//±­×ÓÄÃ×ßÊ£Óà±­×Ó¼ÆÊýÆ÷¼Ó1
+ 219   4                 Cup1Eff=0;
+ 220   4                 MasterDataBuff[Conf1]=0x00;
+ 221   4                 RX1_Buffer[30]=0x00;//±­×ÓÒÑÊ¹ÓÃÊý×éÖµÇåÁã£¬´Ë±­×ÓÖ»ÄÜÊ¹ÓÃÒ»´Î
+ 222   4                 Cup1Waiting=0;
+ 223   4                 Cup1Runing=0;
+ 224   4                 Cup1Ending=0;
+ 225   4                 Cup1EndingDraw=1;//½áÊø±êÖ¾
+ 226   4                 RLED1=OFF;GLED1=OFF;  //±­×ÓÄÃ¿ª£¬Á½¸ö¹¤×÷×´Ì¬µÆÏ¨Ãð
+ 227   4                 ScanCounter1=0;
+ 228   4               } 
+ 229   3           }
+ 230   2           
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 5   
+
+ 231   2          if(Cup1EndingDraw)
+ 232   2            {
+ 233   3                //¼ì²âµ½±­×ÓÀë¿ªºó£¬³éÈ¡XMSÊ±¼ä
+ 234   3                if(ScanCounter1<=CupOffDrawinWaterTimes)//¼ì²âÊ±¼ä£¨ScanCounter1*500Ms<=6*100MS£©±­×ÓÀë¿ªºó³éË®Ê±¼ä 1
+             -00MS
+ 235   3                  { 
+ 236   4                    RLED1=~RLED1;
+ 237   4                   // Valve1=VALVEON;//¿ª·§
+ 238   4                    Cup1Status=VALVEON;//¿ª±Ã
+ 239   4                    Cup1Waiting=0;
+ 240   4                    Cup1Runing=0;
+ 241   4                    Cup1Ending=0;
+ 242   4                    
+ 243   4                    Cup1EndingDraw=1;
+ 244   4                    //RX1_Buffer[27]=0X00;
+ 245   4                   }
+ 246   3                else 
+ 247   3                {
+ 248   4                 RLED1=OFF; 
+ 249   4                 Cup1Status=VALVEOFF;
+ 250   4               //  Valve1=VALVEOFF;//¹Ø·§1
+ 251   4                 Cup1Waiting=1;//»Ö¸´×´Ì¬µÈ´ý
+ 252   4                 Cup1Runing=0;
+ 253   4                 Cup1Ending=0;
+ 254   4                 Cup1EndingDraw=0;
+ 255   4                 RLED1=OFF;GLED1=OFF;
+ 256   4                 ScanCounter1=0;
+ 257   4                }
+ 258   3            }
+ 259   2      }
+ 260   1      else 
+ 261   1                {
+ 262   2                 RLED1=OFF; 
+ 263   2                 Cup1Status=0;
+ 264   2               //  Valve1=VALVEOFF;//¹Ø·§1
+ 265   2                 Cup1Waiting=1;//»Ö¸´×´Ì¬µÈ´ý
+ 266   2                 Cup1Runing=0;
+ 267   2                 Cup1Ending=0;
+ 268   2                 Cup1EndingDraw=0;
+ 269   2                 RLED1=OFF;GLED1=OFF;
+ 270   2                 ScanCounter1=0;
+ 271   2                }
+ 272   1          
+ 273   1      /******************************CUP3¹¦ÄÜ´¦Àí***********************************/\
+ 274   1      if(Cup3Eff==1)
+ 275   1      {
+ 276   2        if(Cup3Waiting)
+ 277   2           { 
+ 278   3            Cup3Waiting=1;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;GLED3=ON;
+ 279   3      
+ 280   3          //  PrintString1("C1Wait \r\n"); 
+ 281   3           
+ 282   3            if(SensorCup(3)==Exist)  //¼ì²âµ½ÓÐ±­×Ó·ÅÈë
+ 283   3              {
+ 284   4                Cup3Runing=1;Cup3Waiting=0;
+ 285   4                GLED3=OFF;
+ 286   4                ScanCounter3=0;
+ 287   4                TimerOut3=0;
+ 288   4              }     
+ 289   3           }  
+ 290   2           
+ 291   2          if(Cup3Runing)//ÔËÐÐÊ±ÅÐ¶ÏÓÐÎÞË®Á÷
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 6   
+
+ 292   2           {
+ 293   3             Cup3Waiting=0;Cup3Runing=1;Cup3Ending=0;Cup3EndingDraw=0;
+ 294   3             RLED3=ON;
+ 295   3            //  EXValve1=VALVEON;//¿ª·§
+ 296   3             Cup3Status=VALVEON;//¿ª±Ã
+ 297   3            // PrintString1("C1Run\r\n"); 
+ 298   3           
+ 299   3            if (ScanCounter3>=WaitingWaterTimeOut&&(TimerOut3==0))//µÈ´ýÀ´Ë®Ê±¼ä200 10s  400 20s ¶Ï¶ÏÐøÐøÀ´Ë®
+ 300   3                {   
+ 301   4                 ScanCounter3=0;
+ 302   4                 TimerOut3=1;
+ 303   4                }
+ 304   3                
+ 305   3                
+ 306   3            if(Water3Sensor==0)//ÎÞË®
+ 307   3                   { Timer10MSCounter13++;//ÎÞË®¼ÆËãÆ÷
+ 308   4                     //  TX1_write2buff(Timer10MSCounter11);  
+ 309   4                   
+ 310   4                     if(Timer10MSCounter13>=SensorWaterTimeOut)  
+ 311   4                       { ExitData3=0;Timer10MSCounter13=0; }                
+ 312   4                   } 
+ 313   3            if(Water3Sensor==1)//ÓÐË®
+ 314   3                   {ExitData3=1; Timer10MSCounter13=0;
+ 315   4                   } 
+ 316   3          
+ 317   3      //Ç°3¸öIF ×¼±¸ÅÐ¶Ï×´Ì¬
+ 318   3                   
+ 319   3           if((( ExitData3==NoExist)&&(TimerOut3))||SensorCupOut(3)==NoExist )//¼ì²âµ½ÎÞ Ë®Á÷  Ôö¼ÓÖ±½ÓÄÃ±­×ÓºóÍ
+             -£»ú 
+ 320   3          
+ 321   3                 { 
+ 322   4                  //PrintString1("No1\r\n"); 
+ 323   4                  TimerOut3=1;   
+ 324   4                  Cup3Runing=0;
+ 325   4                  Cup3Ending=1;
+ 326   4                  RLED3=OFF;  
+ 327   4                  Cup3Status=VALVEOFF;//³éË®µç»ú
+ 328   4                  Pump3=0;//¼±Í£±Ã;  
+ 329   4                  Delay50ms();  
+ 330   4                  EXValve3=VALVEON;//ÅÅ¿Õ·§¶¯×÷
+ 331   4                  
+ 332   4                  Delay1000ms(); //ÑÓÊ±ºó²Å¹Ø±Õ·§          
+ 333   4                  
+ 334   4                  EXValve3=VALVEOFF;
+ 335   4                   
+ 336   4         
+ 337   4                 }else {TimerOut3=0; Cup3Runing=1; }
+ 338   3                         
+ 339   3           }
+ 340   2          if(Cup3Ending)
+ 341   2            { 
+ 342   3              TimerOut3=0;
+ 343   3              Cup3Waiting=0;Cup3Runing=0;Cup3Ending=1;Cup3EndingDraw=0;
+ 344   3              
+ 345   3              GLED3=~GLED3;
+ 346   3              RLED3=~RLED3;
+ 347   3             // PrintString1("C1End \r\n"); 
+ 348   3             
+ 349   3             if(SensorCupOut(3)==NoExist) //¼ì²âµ½±­×ÓÒÑ¾­ÄÃ¿ª
+ 350   3              { 
+ 351   4                 SurplusCount+=1;//±­×ÓÄÃ×ßÊ£Óà±­×Ó¼ÆÊýÆ÷¼Ó1
+ 352   4                MasterDataBuff[Conf3]=0x00;
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 7   
+
+ 353   4                RX1_Buffer[31]=0x00;//±­×ÓÒÑÊ¹ÓÃÊý×éÖµÇåÁã£¬´Ë±­×ÓÖ»ÄÜÊ¹ÓÃÒ»´Î
+ 354   4                 Cup3Eff=0;
+ 355   4                 Cup3Waiting=0;
+ 356   4                 Cup3Runing=0;
+ 357   4                 Cup3Ending=0;
+ 358   4                 Cup3EndingDraw=1;
+ 359   4                 RLED3=OFF;GLED3=OFF;
+ 360   4                 ScanCounter3=0;
+ 361   4                
+ 362   4               } 
+ 363   3           }
+ 364   2           
+ 365   2          if(Cup3EndingDraw)
+ 366   2            {
+ 367   3                //¼ì²âµ½±­×ÓÀë¿ªºó£¬³éÈ¡XMSÊ±¼ä
+ 368   3                if(ScanCounter3<=CupOffDrawinWaterTimes)
+ 369   3                  { 
+ 370   4                    RLED3=~RLED3;
+ 371   4                   // Valve1=VALVEON;//¿ª·§
+ 372   4                    Cup3Status=VALVEON;//¿ª±Ã
+ 373   4                    Cup3Waiting=0;
+ 374   4                    Cup3Runing=0;
+ 375   4                    Cup3Ending=0;
+ 376   4                    Cup3EndingDraw=1;
+ 377   4                    
+ 378   4                   }
+ 379   3                else 
+ 380   3                {
+ 381   4                 RLED3=OFF; 
+ 382   4                 Cup3Status=VALVEOFF;
+ 383   4               //  Valve1=VALVEOFF;//¹Ø·§1
+ 384   4                 Cup3Waiting=1;
+ 385   4                 Cup3Runing=0;
+ 386   4                 Cup3Ending=0;
+ 387   4                 Cup3EndingDraw=0;
+ 388   4                 RLED3=OFF;GLED3=OFF;
+ 389   4                 ScanCounter3=0;
+ 390   4                }
+ 391   3            }
+ 392   2      }
+ 393   1      else 
+ 394   1                {
+ 395   2                 RLED3=OFF; 
+ 396   2                 Cup3Status=VALVEOFF;
+ 397   2               //  Valve1=VALVEOFF;//¹Ø·§1
+ 398   2                 Cup3Waiting=1;
+ 399   2                 Cup3Runing=0;
+ 400   2                 Cup3Ending=0;
+ 401   2                 Cup3EndingDraw=0;
+ 402   2                 RLED3=OFF;GLED3=OFF;
+ 403   2                 ScanCounter3=0;
+ 404   2                }
+ 405   1      /******************************CUP3*******************************************/
+ 406   1            
+ 407   1      /******************************CUP5¹¦ÄÜ´¦Àí***********************************/
+ 408   1      if(Cup5Eff==1)
+ 409   1      {
+ 410   2        if(Cup5Waiting)
+ 411   2           { 
+ 412   3            Cup5Waiting=1;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;GLED5=ON;
+ 413   3      
+ 414   3          //  PrintString1("C1Wait \r\n"); 
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 8   
+
+ 415   3           
+ 416   3            if(SensorCup(5)==Exist)  //¼ì²âµ½ÓÐ±­×Ó·ÅÈë
+ 417   3              {
+ 418   4                Cup5Runing=1;
+ 419   4                Cup5Waiting=0;
+ 420   4                GLED5=OFF;
+ 421   4                ScanCounter5=0;
+ 422   4                TimerOut5=0;
+ 423   4              }     
+ 424   3           }  
+ 425   2           
+ 426   2          if(Cup5Runing)//ÔËÐÐÊ±ÅÐ¶ÏÓÐÎÞË®Á÷
+ 427   2           {
+ 428   3             Cup5Waiting=0;Cup5Runing=1;Cup5Ending=0;Cup5EndingDraw=0;
+ 429   3             RLED5=ON;
+ 430   3            //  EXValve1=VALVEON;//¿ª·§
+ 431   3             Cup5Status=VALVEON;//¿ª±Ã
+ 432   3            // PrintString1("C1Run\r\n"); 
+ 433   3           
+ 434   3            if (ScanCounter5>=WaitingWaterTimeOut&&(TimerOut5==0))//µÈ´ýÀ´Ë®Ê±¼ä200 10s  400 20s ¶Ï¶ÏÐøÐøÀ´Ë®
+ 435   3                {   
+ 436   4                 ScanCounter5=0;
+ 437   4                 TimerOut5=1;
+ 438   4                }
+ 439   3                
+ 440   3                
+ 441   3            if(Water5Sensor==0)//ÎÞË®
+ 442   3                   { Timer10MSCounter15++;//ÎÞË®¼ÆÊýÆ÷
+ 443   4                     //  TX1_write2buff(Timer10MSCounter11);  
+ 444   4                   
+ 445   4                     if(Timer10MSCounter15>=SensorWaterTimeOut)  
+ 446   4                       { ExitData5=0;Timer10MSCounter15=0; }                
+ 447   4                   } 
+ 448   3            if(Water5Sensor==1)//ÓÐË®
+ 449   3                   {ExitData5=1; Timer10MSCounter15=0;
+ 450   4                   } 
+ 451   3          
+ 452   3      //Ç°3¸öIF ×¼±¸ÅÐ¶Ï×´Ì¬
+ 453   3                   
+ 454   3           if((( ExitData5==NoExist)&&(TimerOut5))||SensorCupOut(5)==NoExist )//¼ì²âµ½ÎÞ Ë®Á÷  Ôö¼ÓÖ±½ÓÄÃ±­×ÓºóÍ
+             -£»ú 
+ 455   3          
+ 456   3                 { 
+ 457   4                  //PrintString1("No1\r\n"); 
+ 458   4                  TimerOut5=1;   
+ 459   4                  Cup5Runing=0;
+ 460   4                  Cup5Ending=1;
+ 461   4                  RLED5=OFF;  
+ 462   4                  Cup5Status=VALVEOFF;//³éË®µç»ú
+ 463   4                  Pump5=0;//¼±Í£±Ã;  
+ 464   4                  Delay50ms();  
+ 465   4                  EXValve5=VALVEON;//ÅÅ¿Õ·§¶¯×÷
+ 466   4                  
+ 467   4                  Delay1000ms(); //ÑÓÊ±ºó²Å¹Ø±Õ·§          
+ 468   4                  
+ 469   4                  EXValve5=VALVEOFF;
+ 470   4                   
+ 471   4         
+ 472   4                 }else {TimerOut5=0; Cup5Runing=1; }
+ 473   3                         
+ 474   3           }
+ 475   2          if(Cup5Ending)
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 9   
+
+ 476   2            { 
+ 477   3              TimerOut5=0;
+ 478   3              Cup5Waiting=0;Cup5Runing=0;Cup5Ending=1;Cup5EndingDraw=0;
+ 479   3              
+ 480   3              GLED5=~GLED5;
+ 481   3              RLED5=~RLED5;
+ 482   3            
+ 483   3             
+ 484   3             if(SensorCupOut(5)==NoExist) //¼ì²âµ½±­×ÓÒÑ¾­ÄÃ¿ª
+ 485   3              { 
+ 486   4                 SurplusCount+=1;//±­×ÓÄÃ×ßÊ£Óà±­×Ó¼ÆÊýÆ÷¼Ó1
+ 487   4                 MasterDataBuff[Conf5]=0x00;
+ 488   4                 RX1_Buffer[32]=0x00;//±­×ÓÒÑÊ¹ÓÃÊý×éÖµÇåÁã£¬´Ë±­×ÓÖ»ÄÜÊ¹ÓÃÒ»´Î
+ 489   4                 Cup5Eff=0; 
+ 490   4                 Cup5Waiting=0;
+ 491   4                 Cup5Runing=0;
+ 492   4                 Cup5Ending=0;
+ 493   4                 Cup5EndingDraw=1;
+ 494   4                 RLED5=OFF;GLED5=OFF;
+ 495   4                 ScanCounter5=0;
+ 496   4      
+ 497   4               } 
+ 498   3           }
+ 499   2           
+ 500   2          if(Cup5EndingDraw)
+ 501   2            {
+ 502   3                //¼ì²âµ½±­×ÓÀë¿ªºó£¬³éÈ¡XMSÊ±¼ä
+ 503   3                if(ScanCounter5<=CupOffDrawinWaterTimes)
+ 504   3                  { 
+ 505   4                    
+ 506   4                    RLED5=~RLED5;
+ 507   4                   // Valve1=VALVEON;//¿ª·§
+ 508   4                    Cup5Status=VALVEON;//¿ª±Ã
+ 509   4                    Cup5Waiting=0;
+ 510   4                    Cup5Runing=0;
+ 511   4                    Cup5Ending=0;
+ 512   4                    Cup5EndingDraw=1;
+ 513   4                   }
+ 514   3                else 
+ 515   3                {
+ 516   4                 RLED5=OFF; 
+ 517   4                 Cup5Status=VALVEOFF;
+ 518   4               //  Valve1=VALVEOFF;//¹Ø·§1
+ 519   4                 Cup5Waiting=1;
+ 520   4                 Cup5Runing=0;
+ 521   4                 Cup5Ending=0;
+ 522   4                 Cup5EndingDraw=0;
+ 523   4                 RLED5=OFF;GLED5=OFF;
+ 524   4                 ScanCounter5=0;
+ 525   4                
+ 526   4                }
+ 527   3            }
+ 528   2        } 
+ 529   1      else 
+ 530   1                {
+ 531   2                 RLED5=OFF; 
+ 532   2                 Cup5Status=VALVEOFF;
+ 533   2               //  Valve1=VALVEOFF;//¹Ø·§1
+ 534   2                 Cup5Waiting=1;
+ 535   2                 Cup5Runing=0;
+ 536   2                 Cup5Ending=0;
+ 537   2                 Cup5EndingDraw=0;
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 10  
+
+ 538   2                 RLED5=OFF;GLED5=OFF;
+ 539   2                 ScanCounter5=0;
+ 540   2                }
+ 541   1      /******************************CUP5***********************************/         
+ 542   1      
+ 543   1      /********************************************************************/  
+ 544   1      
+ 545   1      ///********************************************************************/
+ 546   1            Confine();//´¥·¢±­×ÓÊ£Óà´ÎÊý¼õÒ»  
+ 547   1            SlaveData();//¼ì²â×´Ì¬Öµ´æÈëSlaveDatabuffÀï 
+ 548   1        } //time0¶¨Ê±500ms½áÊøÀ¨ºÅ
+ 549            
+ 550          /********************************************************************/  
+ 551          
+ 552          u8 SensorCup (u8 NumberN) 
+ 553          { u8 ExitData=0;
+ 554   1        static u8 Timer10MSCounter1=0,Timer10MSCounter2=0,Timer10MSCounter3=0,Timer10MSCounter4=0,Timer10MSCount
+             -er5=0;
+ 555   1        if(Timer10MSCounter1>=60) Timer10MSCounter1=0;
+ 556   1        switch (NumberN)
+ 557   1         { 
+ 558   2            case 1://¼ì²âµÚÒ»¸ö±­×ù
+ 559   2                 {
+ 560   3                  if(Cup1==1)
+ 561   3                   { Timer10MSCounter1++;     
+ 562   4                     if(Timer10MSCounter1>=SensorCupTimerOut){ExitData=1;Timer10MSCounter1=0;} //else {ExitData=0;Timer
+             -10MSCounter1£¨3£©=0;}                 
+ 563   4                   }
+ 564   3                 } break;
+ 565   2            case 2: {
+ 566   3                  if(Cup2==1)
+ 567   3                   { Timer10MSCounter2++;   
+ 568   4                     if(Timer10MSCounter2>=SensorCupTimerOut){ExitData=1;Timer10MSCounter2=0;} //else {ExitData=0;Timer
+             -10MSCounter2=0;}                 
+ 569   4                   }
+ 570   3                 } break;
+ 571   2            case 3: {
+ 572   3                  if(Cup3==1)
+ 573   3                   { Timer10MSCounter3++;   
+ 574   4                     if(Timer10MSCounter3>=SensorCupTimerOut){ExitData=1;Timer10MSCounter3=0;} //else {ExitData=0;Timer
+             -10MSCounter3=0;}                
+ 575   4                   }
+ 576   3                 } break;
+ 577   2            case 4:  {
+ 578   3                  if(Cup4==1)
+ 579   3                   { Timer10MSCounter4++;   
+ 580   4                     if(Timer10MSCounter4>=SensorCupTimerOut){ExitData=1;Timer10MSCounter4=0;} // else {ExitData=0;Time
+             -r10MSCounter4=0;}             
+ 581   4                   }
+ 582   3                 
+ 583   3                 } break;
+ 584   2            case 5:  {
+ 585   3                  if(Cup5==1)
+ 586   3                   { Timer10MSCounter5++;   
+ 587   4                     if(Timer10MSCounter5>=SensorCupTimerOut){ExitData=1;Timer10MSCounter5=0;} //else {ExitData=0;Timer
+             -10MSCounter5=0;}                 
+ 588   4                   }
+ 589   3                 }break;
+ 590   2               default: break;
+ 591   2          }    
+ 592   1        return ExitData;
+ 593   1      }
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 11  
+
+ 594          /**********************************************************************************/
+ 595          
+ 596          /**********************************************************************************/
+ 597           //Ãû³Æ£ºu8 SensorCupOut(u8 Number)
+ 598          //¹¦ÄÜ£º¼ì²â±­×ùÎÞ±­×Ó   100´Î 10MS
+ 599          //²ÎÊý£ºU8 ¼ì²âµÄ±­×ùÐòºÅ£º12345
+ 600          //·µ»ØÖµ£ºU8 ÓÐ 1 /  ÎÞ 0
+ 601          //
+ 602          /**********************************************************************************/
+ 603          u8 SensorCupOut (u8 NumberN) 
+ 604          { u8 ExitData;
+ 605   1        static u16 Timer10MSCounter=0;//¾Ö²¿¾²Ì¬±äÁ¿
+ 606   1        
+ 607   1        if(Timer10MSCounter>=60) Timer10MSCounter=0;
+ 608   1        
+ 609   1        switch (NumberN)
+ 610   1         { 
+ 611   2            case 1://¼ì²âµÚÒ»¸ö±­×ù
+ 612   2                 {
+ 613   3                  if(Cup1==0)
+ 614   3                   { Timer10MSCounter++;   
+ 615   4                     if(Timer10MSCounter>=SensorCupOutTime){ExitData=0;Timer10MSCounter=0;}                 
+ 616   4                   }
+ 617   3                    else {ExitData=1;}
+ 618   3                 } break;
+ 619   2            case 2: {
+ 620   3                  if(Cup2==0)
+ 621   3                   { Timer10MSCounter++;   
+ 622   4                     if(Timer10MSCounter>=SensorCupOutTime){ExitData=0;Timer10MSCounter=0;}               
+ 623   4                   }
+ 624   3                    else {ExitData=1;}
+ 625   3                 } break;
+ 626   2            case 3: {
+ 627   3                  if(Cup3==0)
+ 628   3                   { Timer10MSCounter++;   
+ 629   4                     if(Timer10MSCounter>=SensorCupOutTime){ExitData=0;Timer10MSCounter=0;}                 
+ 630   4                   }
+ 631   3                    else {ExitData=1;}
+ 632   3                 } break;
+ 633   2            case 4:  {
+ 634   3                  if(Cup4==0)
+ 635   3                   { Timer10MSCounter++;   
+ 636   4                     if(Timer10MSCounter>=SensorCupOutTime){ExitData=0;Timer10MSCounter=0;}              
+ 637   4                   }
+ 638   3                   else {ExitData=1;}
+ 639   3                 } break;
+ 640   2            case 5:  {
+ 641   3                  if(Cup5==0)
+ 642   3                   { Timer10MSCounter++;   
+ 643   4                     if(Timer10MSCounter>=SensorCupOutTime){ExitData=0;Timer10MSCounter=0;}             
+ 644   4                   }
+ 645   3                    else {ExitData=1;}
+ 646   3                 } break;
+ 647   2               default: break;
+ 648   2          }    
+ 649   1        return ExitData;
+ 650   1      }
+ 651          /**********************************************************************************/
+ 652          
+ 653          
+ 654          //void SlaveControl()
+ 655          //{
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 12  
+
+ 656          //    TX1_Buffer[0]=0xAA;  //Ö¡Í·
+ 657          //    TX1_Buffer[1]=0x55;  //Ö¡Í·
+ 658          //    
+ 659          //    TX1_Buffer[2]=0x17;   //Êý¾Ý³¤¶È
+ 660          //      
+ 661          //    TX1_Buffer[3]=0x20;    //Éè±¸·¢ËÍÉè±¸
+ 662          //    TX1_Buffer[4]=0x21;    //±¾µØÉè±¸·¢ËÍ¸øÉè±¸
+ 663          //      
+ 664          //    TX1_Buffer[5]=0x00;    //Î´ÒªÇóÓ¦´ð
+ 665          //    TX1_Buffer[6]=0x71;    //Êý¾ÝÁ÷·½Ïò
+ 666          //      
+ 667          //    
+ 668          //      
+ 669          //    TX1_Buffer[7]=SlaveDataBuff[Reled1];
+ 670          //    TX1_Buffer[8]=SlaveDataBuff[Reled3];  //ºìµÆ×´Ì¬
+ 671          //    TX1_Buffer[9]=SlaveDataBuff[Reled5];
+ 672          //    
+ 673          //    TX1_Buffer[10]=SlaveDataBuff[Grled1];
+ 674          //    TX1_Buffer[11]=SlaveDataBuff[Grled3]; //ÂÌµÆ×´Ì¬
+ 675          //    TX1_Buffer[12]=SlaveDataBuff[Grled5];
+ 676          //    
+ 677          //    TX1_Buffer[13]=SlaveDataBuff[CupOne];
+ 678          //    TX1_Buffer[14]=SlaveDataBuff[CupTwo]; //Ë®±­ÓÐÎÞ×´Ì¬
+ 679          //    TX1_Buffer[15]=SlaveDataBuff[CupThree];
+ 680          //    
+ 681          //    TX1_Buffer[16]=SlaveDataBuff[Water1];
+ 682          //    TX1_Buffer[17]=SlaveDataBuff[Water3]; //ÎÞÓÐË®¼ì²â
+ 683          //    TX1_Buffer[18]=SlaveDataBuff[Water5];
+ 684          //   
+ 685          //    TX1_Buffer[19]=SlaveDataBuff[pum1];
+ 686          //    TX1_Buffer[20]=SlaveDataBuff[pum3]; //±Ã×´Ì¬¼ì²â
+ 687          //    TX1_Buffer[21]=SlaveDataBuff[pum5];
+ 688          //    
+ 689          //    TX1_Buffer[22]=SlaveDataBuff[Valve1];
+ 690          //    TX1_Buffer[23]=SlaveDataBuff[Valve3]; //¿ÕÆø·§×´Ì¬¼ì²â
+ 691          //    TX1_Buffer[24]=SlaveDataBuff[Valve5];
+ 692          
+ 693          //    TX1_Buffer[25]=SlaveDataBuff[Sensor]; //5VµçÑ¹¿ØÖÆ
+ 694          //    TX1_Buffer[26]=0x00;
+ 695          //  //  TX1_Buffer[26]=(ChassisLock==1)?0x01:0x00;  //»úÏäËø×´Ì¬
+ 696          //    if(RX1_Buffer[6]==0X73)
+ 697          //    {
+ 698          //    TX1_Buffer[27]=SlaveDataBuff[Interval]; //Ê±¼ä¼ä¸ô
+ 699          //    }
+ 700          //    else
+ 701          //    {
+ 702          //      TX1_Buffer[27]=0x00;
+ 703          //    }
+ 704          //    TX1_Buffer[28]=CheckSumTxd(TX1_Buffer,27);//Ð£ÑéºÍ  
+ 705          //    TX1_Buffer[29]=0x55;
+ 706          //    TX1_Buffer[30]=0xAA;  //Ö¡Î²
+ 707          //}
+ 708          
+ 709          
+ 710          
+ 711          /**********************************************************************************/
+ 712          //Ãû³Æ£ºSlaveData()
+ 713          //¹¦ÄÜ£º×´Ì¬¼ì²â´æÈë±¾µØÊý¾ÝÇø
+ 714          //²ÎÊý£º SlaveDataBuff£º±¾µØÊý¾ÝÇø
+ 715          //       
+ 716          //       
+ 717          //·µ»ØÖµ£ºvoid
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 13  
+
+ 718          //--------------------------------
+ 719          //×÷Õß£ºXiongXiaoping   
+ 720          //ÐÞ¸ÄÈÕÆÚ£º2020/05/07
+ 721          //ÐÞ¸ÄÄÚÈÝ£ºÊý¾Ý²É¼¯´æÈë·¢ËÍ»º³åÊý×é
+ 722          //----------------------------
+ 723          /**********************************************************************************/
+ 724          void SlaveData()
+ 725          {
+ 726   1          SlaveDataBuff[Reled1]=(RLED1==ON)?0x01:0x00;
+ 727   1          SlaveDataBuff[Reled3]=(RLED3==ON)?0x01:0x00;  //ºìµÆ×´Ì¬
+ 728   1          SlaveDataBuff[Reled5]=(RLED5==ON)?0x01:0x00;
+ 729   1          
+ 730   1          SlaveDataBuff[Grled1]=(GLED1==ON)?0x01:0x00;
+ 731   1          SlaveDataBuff[Grled3]=(GLED3==ON)?0x01:0x00;  //ÂÌµÆ×´Ì¬
+ 732   1          SlaveDataBuff[Grled5]=(GLED5==ON)?0x01:0x00;
+ 733   1          
+ 734   1          SlaveDataBuff[CupOne]=(Cup1==1)?0x01:0x00;
+ 735   1          SlaveDataBuff[CupTwo]=(Cup3==1)?0x01:0x00;  //Ë®±­ÓÐÎÞ×´Ì¬
+ 736   1          SlaveDataBuff[CupThree]=(Cup5==1)?0x01:0x00;
+ 737   1          
+ 738   1          SlaveDataBuff[Water1]=(Water1Sensor==1)?0x01:0x00;
+ 739   1          SlaveDataBuff[Water3]=(Water3Sensor==1)?0x01:0x00;  //ÎÞÓÐË®¼ì²â
+ 740   1          SlaveDataBuff[Water5]=(Water5Sensor==1)?0x01:0x00;
+ 741   1         
+ 742   1          SlaveDataBuff[pum1]=(Pump1==1)?0x01:0x00;
+ 743   1          SlaveDataBuff[pum3]=(Pump3==1)?0x01:0x00; //±Ã×´Ì¬¼ì²â
+ 744   1          SlaveDataBuff[pum5]=(Pump5==1)?0x01:0x00;
+ 745   1          
+ 746   1          SlaveDataBuff[Valve1]=(EXValve1==1)?0x01:0x00;
+ 747   1          SlaveDataBuff[Valve3]=(EXValve3==1)?0x01:0x00;  //¿ÕÆø·§×´Ì¬¼ì²â
+ 748   1          SlaveDataBuff[Valve5]=(EXValve5==1)?0x01:0x00;
+ 749   1      
+ 750   1          SlaveDataBuff[Sensor]=(CapSensor==1)?0x01:0x00; //5VµçÑ¹¿ØÖÆ
+ 751   1          SlaveDataBuff[Lock]=0x00;//»úÏäËø×´Ì¬
+ 752   1         
+ 753   1          //SlaveDataBuff[Interval]=0x00; //Ê±¼ä¼ä¸ô
+ 754   1        
+ 755   1          SlaveDataBuff[TimH]=EEPROM_read_n(0x0001);
+ 756   1          SlaveDataBuff[TimL]=EEPROM_read_n(0x0000);  //  ¶ÁÈ¡±­×ÓÊ£Óà´ÎÊý
+ 757   1      } 
+ 758          
+ 759          
+ 760          
+ 761          
+ 762          
+ 763          //u8  CheckSumTxd(u8 *dat,u8 length)
+ 764          //{
+ 765          //  u8 ResultCode=TX1_Buffer[2],m;//´Ó³¤¶È¿ªÊ¼Ð§Ñé
+ 766          //  for(m=3;m<=length;m++)
+ 767          //      {
+ 768          //      ResultCode ^= dat[m];//Ã¿¸ö×Ö½ÚÖð²½Òì»ò
+ 769          //      } 
+ 770          //   return ResultCode;
+ 771          //  
+ 772          //}
+ 773          void Delay50ms()    //@11.0592MHz
+ 774          {
+ 775   1        unsigned char i, j, k;
+ 776   1      
+ 777   1        _nop_();
+ 778   1        _nop_();
+ 779   1        i = 3;
+C51 COMPILER V9.54   CUPDET                                                                05/25/2020 16:51:09 PAGE 14  
+
+ 780   1        j = 26;
+ 781   1        k = 223;
+ 782   1        do
+ 783   1        {
+ 784   2          do
+ 785   2          {
+ 786   3            while (--k);
+ 787   3          } while (--j);
+ 788   2        } while (--i);
+ 789   1      }
+ 790          
+ 791          
+ 792          
+ 793          void Delay1000ms()    //@11.0592MHz
+ 794          {
+ 795   1        unsigned char i, j, k;
+ 796   1      
+ 797   1        _nop_();
+ 798   1        _nop_();
+ 799   1        i = 43;
+ 800   1        j = 6;
+ 801   1        k = 203;
+ 802   1        do
+ 803   1        {
+ 804   2          do
+ 805   2          {
+ 806   3            while (--k);
+ 807   3          } while (--j);
+ 808   2        } while (--i);
+ 809   1      }
+ 810          //
+ 811          //
+ 812          //
+ 813          //
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2298    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     64    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

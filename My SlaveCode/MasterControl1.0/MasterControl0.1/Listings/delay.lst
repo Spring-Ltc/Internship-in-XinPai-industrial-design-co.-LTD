@@ -1,0 +1,13 @@
+C51 COMPILER V9.60.0.0   DELAY                                                             05/16/2020 10:27:24 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE DELAY
+OBJECT MODULE PLACED IN delay.obj
+COMPILER INVOKED BY: F:\keil c51\C51\BIN\C51.EXE procedure\delay.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\L
+                    -istings\delay.lst) TABS(2) OBJECT(delay.obj)
+
+line level    source
+
+*** ERROR C318 OF procedure\delay.c: can't open file 'procedure\delay.c'
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  1 ERROR(S)

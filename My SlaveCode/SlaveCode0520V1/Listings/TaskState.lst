@@ -1,0 +1,722 @@
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TASKSTATE
+OBJECT MODULE PLACED IN .\Objects\TaskState.obj
+COMPILER INVOKED BY: C:\Program Files (x86)\Spring Program Files(x86)\MDK4 and MDK5\C51\BIN\C51.EXE USER\TaskState.c COM
+                    -PACT ROM(COMPACT) OPTIMIZE(8,SPEED) BROWSE INCDIR(.\USER;.\FWLIB) DEBUG OBJECTEXTEND PRINT(.\Listings\TaskState.lst) TAB
+                    -S(2) OBJECT(.\Objects\TaskState.obj)
+
+line level    source
+
+   1          
+   2          
+   3          
+   4          
+   5          
+   6          #include "TaskState.h"
+   7          #include "GPIO.h"
+   8          
+   9          #define Exist 1
+  10          #define NoExist 0
+  11          #define ON 0
+  12          #define OFF 1
+  13          #define VALVEON  1
+  14          #define VALVEOFF 0
+  15          
+  16          #define WaitingWaterTimeOut 22  //第一次等待来水时间 22
+  17          
+  18          #define SensorCupTimerOut 3       //传感器 放置杯子后启动时间
+  19          #define SensorCupOutTime 5        //传感器 杯子取出后回待杯时间
+  20          #define SensorWaterTimeOut  28    //第二次来水 传感器检测到无水后确认时间  12
+  21          
+  22          //#define ExvalveRunTime  50        //排空阀运行间隔时间30/15秒
+  23          
+  24          
+  25          u16 ScanCounter1=0, ScanCounter3=0, ScanCounter5=0;ExvalveCounter=0;//扫描次数计数，避免意外触发
+  26          
+  27          //杯子有无状态
+  28          u8 Cup1Status   =0;//1无杯子
+  29          u8 Cup5Status   =0;//5无杯子
+  30          u8 Cup3Status   =0;//3无杯子
+  31          
+  32          //状态机状态标志
+  33          u8 Cup1Waiting=0,Cup1Runing=0,Cup1Ending=0;Cup1EndingDraw=0;
+  34          u8 Cup5Waiting=0,Cup5Runing=0,Cup5Ending=0;Cup5EndingDraw=0;
+  35          u8 Cup3Waiting=0,Cup3Runing=0,Cup3Ending=0;Cup3EndingDraw=0;
+  36          
+  37          u8 ExitData1=1;ExitData3=1;ExitData5=1;//有水无水标志
+  38          
+  39          u8 EEPROMDATA=255;
+  40          u8 MaxDrawingWaterTimes=120;//最长抽水时间120秒
+  41          u8 CupOffDrawinWaterTimes=6; //杯子离开后抽水时间 100MS
+  42          
+  43          
+  44          
+  45          
+  46          //【下面是什么标志占时还没读懂】
+  47          u8  Timer10MSCounter11=0,Timer10MSCounter12=0,Timer10MSCounter13=0,Timer10MSCounter14=0,Timer10MSCounter15
+             -=0;
+  48          u8  TimerOut=0,TimerOut1=0,TimerOut2=0,TimerOut3=0,TimerOut4=0,TimerOut5=0;
+  49          u8 vt1=0,vt2=0,vt3=0,vt4=0,vt5=0;
+  50            
+  51          
+  52          
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 2   
+
+  53          void  GPIO_config(void)
+  54          {
+  55   1        GPIO_InitTypeDef  GPIO_InitStructure; 
+  56   1        
+  57   1        /*控制继电器工作引脚初始化*/
+  58   1        
+  59   1        GPIO_InitStructure.Pin  = GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_6|GPIO_Pin_7;//
+             -VALVE5 4 3 2 1   R GLED1
+  60   1        GPIO_InitStructure.Mode = GPIO_OUT_PP ; // 推挽输出    
+  61   1        GPIO_Inilize(GPIO_P0,&GPIO_InitStructure);
+  62   1        
+  63   1        
+  64   1        GPIO_InitStructure.Pin  = GPIO_Pin_5;// CUP4
+  65   1        GPIO_InitStructure.Mode = GPIO_PullUp ; //上拉准双向口   
+  66   1        GPIO_Inilize(GPIO_P0,&GPIO_InitStructure);  
+  67   1        
+  68   1      
+  69   1        
+  70   1        GPIO_InitStructure.Pin  = GPIO_Pin_0|GPIO_Pin_2|GPIO_Pin_5; //CUP1/CUP3/CUP5
+  71   1        GPIO_InitStructure.Mode =GPIO_PullUp ;//上拉准双向口     
+  72   1        GPIO_Inilize(GPIO_P1,&GPIO_InitStructure);
+  73   1        
+  74   1        GPIO_InitStructure.Pin  = GPIO_Pin_1|GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_6|GPIO_Pin_7; // RLED3 /R5/G5/ R GLED
+             -2
+  75   1        GPIO_InitStructure.Mode = GPIO_OUT_PP ; //推挽输出 
+  76   1        GPIO_Inilize(GPIO_P1,&GPIO_InitStructure);  
+  77   1        
+  78   1        
+  79   1        GPIO_InitStructure.Pin  = GPIO_Pin_7;// //PUMP
+  80   1        GPIO_InitStructure.Mode = GPIO_OUT_PP ; //推挽输出     
+  81   1        GPIO_Inilize(GPIO_P2,&GPIO_InitStructure);  
+  82   1         
+  83   1        GPIO_InitStructure.Pin  = GPIO_Pin_0|GPIO_Pin_1;//   WATERSTATUSE 2/1
+  84   1        GPIO_InitStructure.Mode = GPIO_PullUp ;//上拉准双向口    
+  85   1        GPIO_Inilize(GPIO_P2,&GPIO_InitStructure);  
+  86   1        
+  87   1        GPIO_InitStructure.Pin  = GPIO_Pin_6|GPIO_Pin_7; // UART1
+  88   1        GPIO_InitStructure.Mode = GPIO_PullUp ; //上拉准双向口  
+  89   1        GPIO_Inilize(GPIO_P3,&GPIO_InitStructure);  
+  90   1        
+  91   1        GPIO_InitStructure.Pin  = GPIO_Pin_1|GPIO_Pin_5| GPIO_Pin_6|GPIO_Pin_7; // LED /CAPSENS/ EXVALVE/GLED3
+  92   1        GPIO_InitStructure.Mode = GPIO_OUT_PP;  //       
+  93   1        GPIO_Inilize(GPIO_P4,&GPIO_InitStructure);
+  94   1        
+  95   1        GPIO_InitStructure.Pin  = GPIO_Pin_2|GPIO_Pin_3|GPIO_Pin_4; //WATERSTATUSE5 4 3
+  96   1        GPIO_InitStructure.Mode = GPIO_PullUp;  //       
+  97   1        GPIO_Inilize(GPIO_P4,&GPIO_InitStructure);
+  98   1        
+  99   1        GPIO_InitStructure.Pin  = GPIO_Pin_2|GPIO_Pin_3;  //R GLED4 
+ 100   1        GPIO_InitStructure.Mode = GPIO_OUT_PP;//     
+ 101   1        GPIO_Inilize(GPIO_P5,&GPIO_InitStructure);
+ 102   1        
+ 103   1        GPIO_InitStructure.Pin  = GPIO_Pin_4 ;  //CUP2
+ 104   1        GPIO_InitStructure.Mode = GPIO_PullUp;//     
+ 105   1        GPIO_Inilize(GPIO_P5,&GPIO_InitStructure);
+ 106   1      } 
+ 107          
+ 108          //上电自检
+ 109          void SelfCheckUp(void)
+ 110          {
+ 111   1        //自检
+ 112   1         Pump1=VALVEOFF;// OFF PMUP
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 3   
+
+ 113   1         Pump5=VALVEOFF;// OFF PMUP 
+ 114   1         Pump3=VALVEOFF;// OFF PMUP
+ 115   1         EXValve1=VALVEOFF;
+ 116   1         EXValve5=VALVEOFF;
+ 117   1         EXValve3=VALVEOFF;  
+ 118   1         CapSensor=VALVEOFF; //供电5V关
+ 119   1      
+ 120   1      
+ 121   1      /*******************泵自检  水流阀方式*********************************/
+ 122   1      
+ 123   1       Pump1=VALVEON;//开PMUP1
+ 124   1       Pump5=VALVEON;//开PMUP2
+ 125   1       Pump3=VALVEON;//开PMUP3
+ 126   1       Delay1000ms();
+ 127   1       Delay1000ms();
+ 128   1       EXValve1=VALVEON;
+ 129   1       EXValve5=VALVEON;
+ 130   1       EXValve3=VALVEON;
+ 131   1       Delay1000ms(); 
+ 132   1       Delay1000ms();
+ 133   1       Delay1000ms(); 
+ 134   1      
+ 135   1       Delay50ms();
+ 136   1        Pump1=VALVEOFF;// OFF PMUP
+ 137   1        Pump5=VALVEOFF;// OFF PMUP  
+ 138   1        Pump3=VALVEOFF;// OFF PMUP
+ 139   1       EXValve1=VALVEOFF;
+ 140   1       EXValve5=VALVEOFF;
+ 141   1       EXValve3=VALVEOFF;
+ 142   1      
+ 143   1      
+ 144   1        Delay1000ms();
+ 145   1        CapSensor=VALVEON; //供电5V 
+ 146   1      
+ 147   1      
+ 148   1        Cup1Waiting=1;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;
+ 149   1        Cup5Waiting=1;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;
+ 150   1        Cup3Waiting=1;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;
+ 151   1      }
+ 152          
+ 153          
+ 154          
+ 155          
+ 156          //基础任务，状态机的思想
+ 157          void TaskBasic(void)
+ 158          {
+ 159   1          ScanCounter1++;
+ 160   1          ScanCounter3++;
+ 161   1          ScanCounter5++;
+ 162   1        
+ 163   1          //只读取判断一次，然后就置位0x20不变，避免锁死后面的状态
+ 164   1            if(MasterDataBuff[23] == 0x02);//保持不变
+ 165   1            else if(MasterDataBuff[23] == 0x01)//开启使能
+ 166   1            {Cup1Waiting=1;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;MasterDataBuff[23]=0x02;}
+ 167   1            else if(MasterDataBuff[23] == 0x00)//关闭使能
+ 168   1            {Cup1Waiting=0;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;MasterDataBuff[23]=0x02;}
+ 169   1            
+ 170   1            if(MasterDataBuff[24] == 0x02);//保持不变
+ 171   1            else if(MasterDataBuff[24] == 0x01)//开启使能
+ 172   1            {Cup3Waiting=1;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;MasterDataBuff[24]=0x02;}
+ 173   1            else if(MasterDataBuff[24] == 0x00)//关闭使能
+ 174   1            {Cup3Waiting=0;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;MasterDataBuff[24]=0x02;}
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 4   
+
+ 175   1            
+ 176   1            if(MasterDataBuff[25] == 0x02);//保持不变
+ 177   1            else if(MasterDataBuff[25] == 0x01)//开启使能
+ 178   1            {Cup5Waiting=1;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;MasterDataBuff[25]=0x02;}
+ 179   1            else if(MasterDataBuff[25] == 0x00)//关闭使能
+ 180   1            {Cup5Waiting=0;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;MasterDataBuff[25]=0x02;}
+ 181   1      
+ 182   1        
+ 183   1        
+ 184   1        
+ 185   1      //CUP1 *********************************************************
+ 186   1         if(Cup1Waiting)//等待状态，红灯亮
+ 187   1         { 
+ 188   2            Cup1Waiting=1;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;GLED1=ON;
+ 189   2            if(SensorCup(1)==Exist)  //检测到有杯子放入，检测了多次，避免意外触发
+ 190   2            {
+ 191   3              Cup1Runing=1;Cup1Waiting=0;//进入第二个状态，running态，清除waiting态
+ 192   3              GLED1=OFF;//关闭红灯
+ 193   3              ScanCounter1=0;   //【？？？】
+ 194   3              TimerOut1=0;//【？？？】
+ 195   3            }     
+ 196   2          } 
+ 197   1           
+ 198   1         if(Cup1Runing)//进入运行状态，运行时判断有无水流
+ 199   1         {
+ 200   2               Cup1Waiting=0;Cup1Runing=1;Cup1Ending=0;Cup1EndingDraw=0;
+ 201   2               RLED1=ON;//开启绿灯指示
+ 202   2               Cup1Status=VALVEON;//开泵    //设置cup1状态为有杯子，在外面会判断状态再开泵
+ 203   2             
+ 204   2              if (ScanCounter1>=WaitingWaterTimeOut && (TimerOut1==0))//等待来水时间200 10s  400 20s 断断续续来水
+ 205   2               {  
+ 206   3                 ScanCounter1=0;
+ 207   3                 TimerOut1=1;
+ 208   3               }  
+ 209   2              if(Water1Sensor==0)//无水
+ 210   2               { 
+ 211   3                 Timer10MSCounter11++;//无水计算器，在运行态统计有多少次检测到没有水
+ 212   3                 if(Timer10MSCounter11>=SensorWaterTimeOut)  
+ 213   3                 { ExitData1=0;Timer10MSCounter11=0; }  //有水的标志清除，计数变量清零              
+ 214   3               } 
+ 215   2              if(Water1Sensor==1)//有水
+ 216   2               {ExitData1=1; Timer10MSCounter11=0; } //有水标志置位，无水统计变量清零
+ 217   2            
+ 218   2              //前3个IF 准备判断状态 ，确认是否有水   [没有水了，或杯子没有了(被强行取走杯子了)，执行下面语句]   
+ 219   2              if((( ExitData1==NoExist)&&(TimerOut1))||SensorCupOut(1)==NoExist )//检测到无 水流  增加直接拿杯子后停
+             -机 
+ 220   2              { 
+ 221   3                TimerOut1=1;   
+ 222   3                Cup1Runing=0;//退出运行状态
+ 223   3                Cup1Ending=1;//表示结束一次操作，损耗一个杯子
+ 224   3                RLED1=OFF;  //关闭红灯
+ 225   3                Cup1Status=VALVEOFF;//抽水电机，//设置cup1状态为无杯子，在外面会判断状态关闭泵
+ 226   3                Pump1=0;//急停泵;  
+ 227   3                Delay50ms();  
+ 228   3                EXValve1=VALVEON;//排空阀动作
+ 229   3                Delay1000ms(); //延时后才关闭阀          
+ 230   3                EXValve1=VALVEOFF;
+ 231   3               }
+ 232   2               else {TimerOut1=0; Cup1Runing=1; }//处于正常运行状态                
+ 233   2         }
+ 234   1         
+ 235   1         if(Cup1Ending)//进入结束状态
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 5   
+
+ 236   1         { 
+ 237   2              TimerOut1=0;  //【？？？？】
+ 238   2              Cup1Waiting=0;Cup1Runing=0;Cup1Ending=1;Cup1EndingDraw=0;//更新状态标志
+ 239   2              GLED1=~GLED1;
+ 240   2              RLED1=~RLED1;//每进入一次这个状态，指示灯交替闪烁 
+ 241   2             if(SensorCupOut(1)==NoExist) //检测到杯子已经拿开，没有拿开则一直检测，直到拿开
+ 242   2             { 
+ 243   3               Cup1Waiting=0;Cup1Runing=0; Cup1Ending=0;Cup1EndingDraw=1; //更新状态标志
+ 244   3               RLED1=OFF;GLED1=OFF;//两个灯都关闭
+ 245   3               ScanCounter1=0;
+ 246   3             } 
+ 247   2         }
+ 248   1           
+ 249   1         if(Cup1EndingDraw)//进入结束抽取的状态
+ 250   1         {
+ 251   2              //检测到杯子离开后，抽取XMS时间
+ 252   2              if(ScanCounter1<=CupOffDrawinWaterTimes)//少于规定的抽取时间，继续抽取
+ 253   2              { 
+ 254   3                RLED1=~RLED1;
+ 255   3               // Valve1=VALVEON;//开阀
+ 256   3                Cup1Status=VALVEON;//开泵
+ 257   3                Cup1Waiting=0;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=1;//还是保持endingdraw状态
+ 258   3              }
+ 259   2              else //到达了规定的抽取时间，完成了一次工作，恢复到等待状态，供下一次使用
+ 260   2              {
+ 261   3                 RLED1=OFF; //关闭红灯
+ 262   3                 Cup1Status=VALVEOFF;//设置杯座1状态为无杯子
+ 263   3                 Cup1Waiting=1;Cup1Runing=0;Cup1Ending=0;Cup1EndingDraw=0;//更新状态机的状态
+ 264   3                 RLED1=OFF;GLED1=OFF;//两个灯都关闭
+ 265   3                 ScanCounter1=0;
+ 266   3              }
+ 267   2           }
+ 268   1         
+ 269   1           
+ 270   1      //CUP3*********************************************************
+ 271   1        if(Cup3Waiting)//等待状态，红灯亮
+ 272   1        { 
+ 273   2            Cup3Waiting=1;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;GLED3=ON;
+ 274   2            if(SensorCup(3)==Exist)  //检测到有杯子放入
+ 275   2            {
+ 276   3                Cup3Runing=1;Cup3Waiting=0;
+ 277   3                GLED3=OFF;
+ 278   3                ScanCounter3=0;
+ 279   3                TimerOut3=0;
+ 280   3            }     
+ 281   2         }  
+ 282   1           
+ 283   1        if(Cup3Runing)//运行时判断有无水流
+ 284   1        {
+ 285   2             Cup3Waiting=0;Cup3Runing=1;Cup3Ending=0;Cup3EndingDraw=0;
+ 286   2             RLED3=ON;
+ 287   2             Cup3Status=VALVEON;//开泵 
+ 288   2             if (ScanCounter3>=WaitingWaterTimeOut&&(TimerOut3==0))//等待来水时间200 10s  400 20s 断断续续来水
+ 289   2             {  
+ 290   3                 ScanCounter3=0;
+ 291   3                 TimerOut3=1;
+ 292   3             }  
+ 293   2             if(Water3Sensor==0)//无水
+ 294   2             { 
+ 295   3               Timer10MSCounter13++;//无水计算器;  
+ 296   3               if(Timer10MSCounter13>=SensorWaterTimeOut)  
+ 297   3               { ExitData3=0;Timer10MSCounter13=0; }                
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 6   
+
+ 298   3             } 
+ 299   2             if(Water3Sensor==1)//有水
+ 300   2             {ExitData3=1; Timer10MSCounter13=0;} 
+ 301   2          
+ 302   2            //前3个IF 准备判断状态             
+ 303   2            if((( ExitData3==NoExist)&&(TimerOut3))||SensorCupOut(3)==NoExist )//检测到无 水流  增加直接拿杯子后
+             -停机 
+ 304   2            { 
+ 305   3                  TimerOut3=1;   
+ 306   3                  Cup3Runing=0;
+ 307   3                  Cup3Ending=1;
+ 308   3                  RLED3=OFF;  
+ 309   3                  Cup3Status=VALVEOFF;//抽水电机
+ 310   3                  Pump3=0;//急停泵;  
+ 311   3                  Delay50ms();  
+ 312   3                  EXValve3=VALVEON;//排空阀动作
+ 313   3                  Delay1000ms(); //延时后才关闭阀
+ 314   3                  EXValve3=VALVEOFF;
+ 315   3             }
+ 316   2             else {TimerOut3=0; Cup3Runing=1; }
+ 317   2                         
+ 318   2         }
+ 319   1        if(Cup3Ending)
+ 320   1        { 
+ 321   2            TimerOut3=0;
+ 322   2            Cup3Waiting=0;Cup3Runing=0;Cup3Ending=1;Cup3EndingDraw=0;
+ 323   2            GLED3=~GLED3;
+ 324   2            RLED3=~RLED3;
+ 325   2            if(SensorCupOut(3)==NoExist) //检测到杯子已经拿开
+ 326   2            { 
+ 327   3                 Cup3Waiting=0;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=1;
+ 328   3                 RLED3=OFF;GLED3=OFF;
+ 329   3                 ScanCounter3=0;
+ 330   3             } 
+ 331   2         }
+ 332   1        if(Cup3EndingDraw)
+ 333   1        {
+ 334   2              //检测到杯子离开后，抽取XMS时间
+ 335   2              if(ScanCounter3<=CupOffDrawinWaterTimes)
+ 336   2              { 
+ 337   3                  RLED3=~RLED3;
+ 338   3                  Cup3Status=VALVEON;//开泵
+ 339   3                  Cup3Waiting=0;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=1;
+ 340   3               }
+ 341   2               else 
+ 342   2               {
+ 343   3                 RLED3=OFF; 
+ 344   3                 Cup3Status=VALVEOFF;
+ 345   3                 Cup3Waiting=1;Cup3Runing=0;Cup3Ending=0;Cup3EndingDraw=0;
+ 346   3                 RLED3=OFF;GLED3=OFF;
+ 347   3                 ScanCounter3=0;
+ 348   3                }
+ 349   2         }
+ 350   1      //CUP5*********************************************************
+ 351   1          if(Cup5Waiting)
+ 352   1          { 
+ 353   2            Cup5Waiting=1;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;GLED5=ON;
+ 354   2            if(SensorCup(5)==Exist)  //检测到有杯子放入
+ 355   2            {
+ 356   3                Cup5Runing=1;Cup5Waiting=0;
+ 357   3                GLED5=OFF;
+ 358   3                ScanCounter5=0;
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 7   
+
+ 359   3                TimerOut5=0;
+ 360   3             }    
+ 361   2           }  
+ 362   1          if(Cup5Runing)//运行时判断有无水流
+ 363   1          {
+ 364   2             Cup5Waiting=0;Cup5Runing=1;Cup5Ending=0;Cup5EndingDraw=0;
+ 365   2             RLED5=ON;
+ 366   2             Cup5Status=VALVEON;//开泵
+ 367   2             if (ScanCounter5>=WaitingWaterTimeOut&&(TimerOut5==0))//等待来水时间200 10s  400 20s 断断续续来水
+ 368   2             {  
+ 369   3                 ScanCounter5=0;
+ 370   3                 TimerOut5=1;
+ 371   3              } 
+ 372   2              if(Water5Sensor==0)//无水
+ 373   2              { 
+ 374   3                Timer10MSCounter15++;//无水计算器
+ 375   3                if(Timer10MSCounter15>=SensorWaterTimeOut)  
+ 376   3                { ExitData5=0;Timer10MSCounter15=0; }                
+ 377   3              } 
+ 378   2              if(Water5Sensor==1)//有水
+ 379   2              {ExitData5=1; Timer10MSCounter15=0;  } 
+ 380   2          
+ 381   2              //前3个IF 准备判断状态   
+ 382   2              if((( ExitData5==NoExist)&&(TimerOut5))||SensorCupOut(5)==NoExist )//检测到无 水流  增加直接拿杯子后停
+             -机 
+ 383   2              { 
+ 384   3                  TimerOut5=1;   
+ 385   3                  Cup5Runing=0;
+ 386   3                  Cup5Ending=1;
+ 387   3                  RLED5=OFF;  
+ 388   3                  Cup5Status=VALVEOFF;//抽水电机
+ 389   3                  Pump5=0;//急停泵;  
+ 390   3                  Delay50ms();  
+ 391   3                  EXValve5=VALVEON;//排空阀动作
+ 392   3                  Delay1000ms(); //延时后才关闭阀          
+ 393   3                  EXValve5=VALVEOFF;
+ 394   3                }
+ 395   2                else {TimerOut5=0; Cup5Runing=1; }           
+ 396   2           }
+ 397   1          if(Cup5Ending)
+ 398   1          { 
+ 399   2              TimerOut5=0;
+ 400   2              Cup5Waiting=0;Cup5Runing=0;Cup5Ending=1;Cup5EndingDraw=0;
+ 401   2              GLED5=~GLED5;
+ 402   2              RLED5=~RLED5;
+ 403   2              if(SensorCupOut(5)==NoExist) //检测到杯子已经拿开
+ 404   2              { 
+ 405   3                 Cup5Waiting=0;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=1;
+ 406   3                 RLED5=OFF;GLED5=OFF;
+ 407   3                 ScanCounter5=0;
+ 408   3               } 
+ 409   2           } 
+ 410   1          if(Cup5EndingDraw)
+ 411   1          {
+ 412   2                //检测到杯子离开后，抽取XMS时间
+ 413   2                if(ScanCounter5<=CupOffDrawinWaterTimes)
+ 414   2                { 
+ 415   3                    RLED5=~RLED5;
+ 416   3                    Cup5Status=VALVEON;//开泵
+ 417   3                    Cup5Waiting=0;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=1;
+ 418   3                 }
+ 419   2                else 
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 8   
+
+ 420   2                {
+ 421   3                 RLED5=OFF; 
+ 422   3                 Cup5Status=VALVEOFF;
+ 423   3                 Cup5Waiting=1;Cup5Runing=0;Cup5Ending=0;Cup5EndingDraw=0;
+ 424   3                 RLED5=OFF;GLED5=OFF;
+ 425   3                 ScanCounter3=0;
+ 426   3                }
+ 427   2            }
+ 428   1      }
+ 429          
+ 430          
+ 431          //名称：u8 SensorCup(u8 Number)
+ 432          //功能：检测杯座有无杯子   100次 10MS
+ 433          //参数：U8 检测的杯座序号：12345
+ 434          //返回值：U8 有 1 /  无 0
+ 435          //
+ 436          u8 SensorCup (u8 NumberN) 
+ 437          {
+ 438   1        u8 ExitData=0;
+ 439   1        static u8 Timer10MSCounter1=0,Timer10MSCounter3=0,Timer10MSCounter5=0;
+ 440   1        if(Timer10MSCounter1>=60) 
+ 441   1          Timer10MSCounter1=0;
+ 442   1        switch (NumberN)
+ 443   1        { 
+ 444   2          case 1://检测第一个杯座
+ 445   2          {
+ 446   3            if(Cup1==1)
+ 447   3             { 
+ 448   4               Timer10MSCounter1++;     
+ 449   4               if(Timer10MSCounter1>=SensorCupTimerOut)
+ 450   4                  {ExitData=1;Timer10MSCounter1=0;} //else {ExitData=0;Timer10MSCounter1=0;}                 
+ 451   4             }
+ 452   3           }break;
+ 453   2          case 3: 
+ 454   2          {
+ 455   3            if(Cup3==1)
+ 456   3            { 
+ 457   4              Timer10MSCounter3++;   
+ 458   4               if(Timer10MSCounter3>=SensorCupTimerOut)
+ 459   4                  {ExitData=1;Timer10MSCounter3=0;} //else {ExitData=0;Timer10MSCounter3=0;}                
+ 460   4             }
+ 461   3           } break;
+ 462   2          case 5:
+ 463   2          {
+ 464   3            if(Cup5==1)
+ 465   3            { 
+ 466   4              Timer10MSCounter5++;   
+ 467   4              if(Timer10MSCounter5>=SensorCupTimerOut)
+ 468   4                {ExitData=1;Timer10MSCounter5=0;} //else {ExitData=0;Timer10MSCounter5=0;}                 
+ 469   4            }
+ 470   3           } break;
+ 471   2          default: break;
+ 472   2        }    
+ 473   1        return ExitData;
+ 474   1      }
+ 475          
+ 476           //
+ 477           //名称：u8 SensorCupOut(u8 Number)
+ 478          //功能：检测杯座无杯子   100次 10MS
+ 479          //参数：U8 检测的杯座序号：12345
+ 480          //返回值：U8 有 1 /  无 0
+ 481          //
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 9   
+
+ 482          //
+ 483          u8 SensorCupOut (u8 NumberN) 
+ 484          {
+ 485   1        u8 ExitData;
+ 486   1        static u16 Timer10MSCounter=0;
+ 487   1        if(Timer10MSCounter>=60) 
+ 488   1          Timer10MSCounter=0;
+ 489   1        switch (NumberN)
+ 490   1        { 
+ 491   2          case 1://检测第一个杯座
+ 492   2          {
+ 493   3            if(Cup1==0)
+ 494   3            { 
+ 495   4              Timer10MSCounter++;   
+ 496   4              if(Timer10MSCounter>=SensorCupOutTime)
+ 497   4                {ExitData=0;Timer10MSCounter=0;}                 
+ 498   4             }
+ 499   3             else {ExitData=1;}
+ 500   3           } break;
+ 501   2          case 3: 
+ 502   2          {
+ 503   3            if(Cup3==0)
+ 504   3            { 
+ 505   4              Timer10MSCounter++;   
+ 506   4               if(Timer10MSCounter>=SensorCupOutTime)
+ 507   4                  {ExitData=0;Timer10MSCounter=0;}                 
+ 508   4            }
+ 509   3             else {ExitData=1;}
+ 510   3           } break;
+ 511   2          case 5: 
+ 512   2          {
+ 513   3            if(Cup5==0)
+ 514   3             {
+ 515   4               Timer10MSCounter++;   
+ 516   4               if(Timer10MSCounter>=SensorCupOutTime)
+ 517   4                  {ExitData=0;Timer10MSCounter=0;}             
+ 518   4             }
+ 519   3              else {ExitData=1;}
+ 520   3           } break;
+ 521   2          default: break;
+ 522   2        }    
+ 523   1        return ExitData;
+ 524   1      }
+ 525          
+ 526          //名称：u8 SensorWater(u8 Number)
+ 527          //功能：检测管道里有无液体  100次 10MS
+ 528          //参数：U8 检测的管道序号：12345
+ 529          //返回值：U8 有 1 /  无 0
+ 530          //
+ 531          
+ 532          //u8 SensorWater(u8 NumberN) 
+ 533          //{ 
+ 534          //  u8  ExitData=0;
+ 535          //  
+ 536          ////  if(Timer10MSCounter11>=60) Timer10MSCounter11=0;
+ 537          ////  if(Timer10MSCounter12>=60) Timer10MSCounter11=0;
+ 538          ////  if(Timer10MSCounter13>=60) Timer10MSCounter11=0;
+ 539          ////  if(Timer10MSCounter14>=60) Timer10MSCounter11=0;
+ 540          ////  if(Timer10MSCounter15>=60) Timer10MSCounter11=0;
+ 541          //  
+ 542          //  switch (NumberN)
+ 543          //   { 
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 10  
+
+ 544          //      case 1://检测第一条管道
+ 545          //           {
+ 546          //            if(Water1Sensor==0)//无水
+ 547          //             { Timer10MSCounter11++;     TX1_write2buff(Timer10MSCounter11);  
+ 548          //             
+ 549          //               if(Timer10MSCounter11>=SensorWaterTimeOut)  
+ 550          //                 { ExitData=0;Timer10MSCounter11=0; }                
+ 551          //             } 
+ 552          //            if(Water1Sensor==1)//有水
+ 553          //             {ExitData=1; Timer10MSCounter11=0;
+ 554          //             } 
+ 555          //           } break;
+ 556          //      case 2: {
+ 557          //            if(Water2Sensor==0) 
+ 558          //             { Timer10MSCounter12++;   
+ 559          //               if(Timer10MSCounter12>=SensorWaterTimeOut){ExitData=0;Timer10MSCounter12=0;} //else {ExitData=0;
+             -}                 
+ 560          //             }
+ 561          //            else {ExitData=1;Timer10MSCounter12=0;}
+ 562          //           } break;
+ 563          //      case 3: {
+ 564          //            if(Water3Sensor==0)
+ 565          //             { Timer10MSCounter13++;   
+ 566          //               if(Timer10MSCounter13>=SensorWaterTimeOut){ExitData=0;Timer10MSCounter13=0;} //else {ExitData=0;
+             -}                 
+ 567          //             } 
+ 568          //             else {ExitData=1;Timer10MSCounter13=0;}
+ 569          //           } break;
+ 570          //      case 4:  {
+ 571          //            if(Water4Sensor==0)
+ 572          //             { Timer10MSCounter14++;   
+ 573          //               if(Timer10MSCounter14>=SensorWaterTimeOut){ExitData=0;Timer10MSCounter14=0;} //else ExitData=1; 
+             -                  
+ 574          //             }
+ 575          //            else {ExitData=1;Timer10MSCounter14=0;}
+ 576          // 
+ 577          //           } break;
+ 578          //      case 5:{
+ 579          //                if(Water5Sensor==0)
+ 580          //                  { Timer10MSCounter15++;   
+ 581          //                    if(Timer10MSCounter15>=SensorWaterTimeOut){ExitData=0;Timer10MSCounter15=0;} //else {ExitDa
+             -ta=0;}                 
+ 582          //                  } 
+ 583          //                else {ExitData=1;Timer10MSCounter15=0;}
+ 584          //             } break;
+ 585          //         default: break;
+ 586          //    } 
+ 587          
+ 588          //  TX1_write2buff(ExitData+2); 
+ 589          //  return ExitData;
+ 590          //}
+ 591          //延时程序50MS
+ 592          
+ 593          void Delay50ms()    //@11.0592MHz
+ 594          {
+ 595   1        unsigned char i, j, k;
+ 596   1      
+ 597   1        _nop_();
+ 598   1        _nop_();
+ 599   1        i = 3;
+ 600   1        j = 26;
+ 601   1        k = 223;
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 11  
+
+ 602   1        do
+ 603   1        {
+ 604   2          do
+ 605   2          {
+ 606   3            while (--k);
+ 607   3          } while (--j);
+ 608   2        } while (--i);
+ 609   1      }
+ 610          
+ 611          
+ 612          
+ 613          void Delay1000ms()    //@11.0592MHz
+ 614          {
+ 615   1        unsigned char i, j, k;
+ 616   1      
+ 617   1        _nop_();
+ 618   1        _nop_();
+ 619   1        i = 43;
+ 620   1        j = 6;
+ 621   1        k = 203;
+ 622   1        do
+ 623   1        {
+ 624   2          do
+ 625   2          {
+ 626   3            while (--k);
+ 627   3          } while (--j);
+ 628   2        } while (--i);
+ 629   1      }
+ 630          
+ 631          
+ 632          
+ 633          void WriteStateToSlaveDataBuff(void)
+ 634          {
+ 635   1        SlaveDataBuff[0] = RLED1;
+ 636   1        SlaveDataBuff[1] = RLED3;
+ 637   1        SlaveDataBuff[2] = RLED5;
+ 638   1        SlaveDataBuff[3] = GLED1;
+ 639   1        SlaveDataBuff[4] = GLED3;
+ 640   1        SlaveDataBuff[5] = GLED5;//写LED状态
+ 641   1        
+ 642   1        SlaveDataBuff[6] = Cup1Status;
+ 643   1        SlaveDataBuff[7] = Cup3Status;
+ 644   1        SlaveDataBuff[8] = Cup5Status;//写有无杯子状态
+ 645   1        
+ 646   1        SlaveDataBuff[6] = ExitData1;
+ 647   1        SlaveDataBuff[7] = ExitData3;
+ 648   1        SlaveDataBuff[8] = ExitData5;//写有无水状态
+ 649   1      
+ 650   1      }
+ 651          
+ 652          void PumpControl(void)
+ 653          {
+ 654   1        if(Cup1Status==1)//有杯子状态确定是否开启泵
+ 655   1             Pump1=1;// 
+ 656   1        else Pump1=0;//关泵
+ 657   1        if(Cup3Status==1)//有杯子状态确定是否开启泵
+ 658   1             Pump3=1;// 
+ 659   1        else Pump3=0;//关泵
+ 660   1        if(Cup5Status==1)//有杯子状态确定是否开启泵
+ 661   1             Pump5=1;// 
+ 662   1        else Pump5=0;//关泵
+ 663   1      }
+C51 COMPILER V9.54   TASKSTATE                                                             05/20/2020 10:08:50 PAGE 12  
+
+ 664          
+ 665          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1864    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =     55       2
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

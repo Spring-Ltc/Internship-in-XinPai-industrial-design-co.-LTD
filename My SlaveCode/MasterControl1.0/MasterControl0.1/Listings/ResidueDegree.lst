@@ -1,0 +1,193 @@
+C51 COMPILER V9.54   RESIDUEDEGREE                                                         05/25/2020 10:34:24 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE RESIDUEDEGREE
+OBJECT MODULE PLACED IN ResidueDegree.obj
+COMPILER INVOKED BY: C:\Program Files (x86)\Spring Program Files(x86)\MDK4 and MDK5\C51\BIN\C51.EXE procedure\ResidueDeg
+                    -ree.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\ResidueDegree.lst) TABS(2) OBJECT(ResidueDegree
+                    -.obj)
+
+line level    source
+
+   1          #include  "ResidueDegree.h"
+   2          
+   3          
+   4          /**********************************************************************************/
+   5          //名称：u16 DataProcessing（u16  SurplusCount ）
+   6          //功能：EEPROM杯子剩余触发减一
+   7          //参数：u16  SurplusCount：拿走杯子触发标志杯子计数（抽液一次完成）
+   8          //返回值：将值写入EEPROMEEPROM_write_n(0x0000)和EEPROM_write_n(0x0001）；
+   9          //--------------------------------
+  10          //作者：XiongXiaoping   
+  11          //修改日期：2020/05/09
+  12          //修改内容：数据使用后触发用了一次（杯子），减1后存入缓冲数组，并存到EEPROM
+  13          //----------------------------
+  14          /**********************************************************************************/
+  15          u16 DataProcessing(u16  SurplusCount )
+  16          {
+  17   1          u8 SurplusCount1=0,SurplusCount2=0; //定义两个数据缓存区
+  18   1          u16 ReadValue=0;  //读eeprom值缓存区
+  19   1          ReadValue=EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000);  //读取EEPROM存储的值
+  20   1          ReadValue-=SurplusCount;  //EEPROM存储的值减去抽液次数（即拿走杯子触发计数器）
+  21   1          SurplusCount1 = ReadValue%256;  //高位八位存储
+  22   1          SurplusCount2 = ReadValue/256;  //低八位
+  23   1          EEPROM_SectorErase(0x0000);   //擦除扇区
+  24   1          EEPROM_write_n(0x0000,SurplusCount1); //低八位写入
+  25   1          _nop_();
+  26   1          EEPROM_write_n(0x0001,SurplusCount2); //高八位写入
+  27   1          _nop_();
+  28   1          return 0; //写入成功
+  29   1      }
+  30          /**********************************************************************************/
+  31          
+  32          
+  33          /**********************************************************************************/
+  34          //名称：void MasterControlEE()
+  35          //功能：修改剩余杯子次数函数
+  36          //参数：帧头+包长+识别码+功能码(0x55数据流)+数据段+效验码+帧尾  
+  37          //      EEPROM_SectorErase:删除扇区函数
+  38          //      EEPROM_write_n:写入一个字节函数
+  39          //      _nop_():延时
+  40          //      SlaveControlEE()：发送函数数据调用
+  41          //返回值：void
+  42          //--------------------------------
+  43          //作者：XiongXiaoping   
+  44          //修改日期：2020/05/07
+  45          //修改内容：
+  46          //----------------------------
+  47          /**********************************************************************************/
+  48          void MasterControlEE()
+  49          {
+  50   1        u16 DoubleTempvalue;
+  51   1            if((MasterDataBuff[21]*256+MasterDataBuff[22])<0xfffa)  
+  52   1              {
+  53   2                DoubleTempvalue = (MasterDataBuff[21]*256+(MasterDataBuff[22]+0x03));
+C51 COMPILER V9.54   RESIDUEDEGREE                                                         05/25/2020 10:34:24 PAGE 2   
+
+  54   2                EEPROM_SectorErase(0x0000); 
+  55   2                EEPROM_write_n(0x0000,(DoubleTempvalue%256));//低八位写入一个扇区单元
+  56   2                _nop_();
+  57   2                EEPROM_write_n(0x0001,(DoubleTempvalue/256));//高八位写入一个扇区单元
+  58   2                _nop_();
+  59   2               
+  60   2              }
+  61   1              else if((MasterDataBuff[21]*256+MasterDataBuff[22])>=0xfffa)  
+  62   1              {
+  63   2                EEPROM_SectorErase(0x0000); 
+  64   2                EEPROM_write_n(0x0000,MasterDataBuff[22]);//低八位写入一个扇区单元
+  65   2                _nop_();
+  66   2                EEPROM_write_n(0x0001,MasterDataBuff[21]);//高八位写入一个扇区单元
+  67   2                _nop_();
+  68   2              }
+  69   1              
+  70   1      //        {
+  71   1      //           SlaveControlEE();//调用要发送的数组
+  72   1      //            for(y=0;y<=11;y++)
+  73   1      //            {
+  74   1      //              UART_Send_Byte(TX1_Buffer[y]);//打印剩余杯子次数
+  75   1      //            }
+  76   1      //        }
+  77   1      
+  78   1      }
+  79          /**********************************************************************************/
+  80          /**********************************************************************************/
+  81          //名称：Confine()
+  82          //功能：触发（拿走）杯子减一次剩余杯子
+  83          //参数：u16  SurplusCount：拿走杯子触发标志杯子计数（抽液一次完成）
+  84          //返回值：将值写入EEPROMEEPROM_write_n(0x0000)和EEPROM_write_n(0x0001）；
+  85          //--------------------------------
+  86          //作者：XiongXiaoping   
+  87          //修改日期：2020/05/09
+  88          //修改内容：数据使用后触发用了一次（杯子），减1后存入缓冲数组，并存到EEPROM
+  89          //----------------------------
+  90          /**********************************************************************************/
+  91          void Confine()
+  92          {
+  93   1      if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x03)   //读取剩余杯子次数
+  94   1              {
+  95   2                DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+  96   2                SurplusCount=0;//写入完成后，清零方便下次写入
+  97   2                if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00) //在剩余3次时是否判断这次已经使用完了
+  98   2                  {
+  99   3                  
+ 100   3                    //RX1_Buffer[26]=0x00; //清空数组
+ 101   3                    Cup1Eff=0;  //标志置为0
+ 102   3                  //  RX1_Buffer[27]=0x00;  //清空数组
+ 103   3                    Cup3Eff=0;  //标志置为0
+ 104   3                  //  RX1_Buffer[28]=0x00; //清空数组
+ 105   3                    Cup5Eff=0;  //标志置为0
+ 106   3                    
+ 107   3                  }           
+ 108   2              }         
+ 109   1          else  if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x02)   //读取剩余杯子次数
+ 110   1            {
+ 111   2              //RX1_Buffer[28]=0x00;
+ 112   2              Cup5Eff=0;
+ 113   2              DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+ 114   2              SurplusCount=0;//写入完成后，清零方便下次写入
+ 115   2              if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00) //在剩余2次时是否判断这次已经使用完了
+C51 COMPILER V9.54   RESIDUEDEGREE                                                         05/25/2020 10:34:24 PAGE 3   
+
+ 116   2                {
+ 117   3                
+ 118   3                  //RX1_Buffer[26]=0x00; //清空数组
+ 119   3                  Cup1Eff=0;  //标志置为0
+ 120   3                  //RX1_Buffer[27]=0x00;  //清空数组
+ 121   3                  Cup3Eff=0;  //标志置为0
+ 122   3                //  RX1_Buffer[28]=0x00; //清空数组
+ 123   3                  Cup5Eff=0;  //标志置为0
+ 124   3                  
+ 125   3                }           
+ 126   2            }
+ 127   1            else if ((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x01)
+ 128   1            {
+ 129   2            //  RX1_Buffer[27]=0x00;
+ 130   2              Cup3Eff=0;
+ 131   2              //RX1_Buffer[28]=0x00;
+ 132   2              Cup5Eff=0;
+ 133   2              DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+ 134   2              SurplusCount=0;//写入完成后，清零方便下次写入 
+ 135   2              if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00)//在剩余1次时是否判断这次已经使用完了
+ 136   2              {
+ 137   3            
+ 138   3              //RX1_Buffer[26]=0x00;
+ 139   3              Cup1Eff=0;
+ 140   3              //RX1_Buffer[27]=0x00;
+ 141   3              Cup3Eff=0;
+ 142   3              //RX1_Buffer[28]=0x00;
+ 143   3              Cup5Eff=0;
+ 144   3              
+ 145   3              }   
+ 146   2            }
+ 147   1            else if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00)
+ 148   1            {
+ 149   2            
+ 150   2              //RX1_Buffer[26]=0x00;
+ 151   2              Cup1Eff=0;
+ 152   2              //RX1_Buffer[27]=0x00;
+ 153   2              Cup3Eff=0;
+ 154   2              //RX1_Buffer[28]=0x00;
+ 155   2              Cup5Eff=0;
+ 156   2              
+ 157   2            }   
+ 158   1            else
+ 159   1            {
+ 160   2              DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+ 161   2              SurplusCount=0;//写入完成后，清零方便下次写入 
+ 162   2            }   
+ 163   1        }     
+ 164            /********************************************************************/    
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    589    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----       6
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

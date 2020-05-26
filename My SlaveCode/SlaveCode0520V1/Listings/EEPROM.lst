@@ -1,0 +1,228 @@
+C51 COMPILER V9.54   EEPROM                                                                05/20/2020 10:08:50 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE EEPROM
+OBJECT MODULE PLACED IN .\Objects\EEPROM.obj
+COMPILER INVOKED BY: C:\Program Files (x86)\Spring Program Files(x86)\MDK4 and MDK5\C51\BIN\C51.EXE FWLIB\EEPROM.c COMPA
+                    -CT ROM(COMPACT) OPTIMIZE(8,SPEED) BROWSE INCDIR(.\USER;.\FWLIB) DEBUG OBJECTEXTEND PRINT(.\Listings\EEPROM.lst) TABS(2) 
+                    -OBJECT(.\Objects\EEPROM.obj)
+
+line level    source
+
+   1          
+   2          //  本程序是STC系列的内置EEPROM读写程序。
+   3          
+   4          #include "config.h"
+   5          #include "eeprom.h"
+   6          
+   7          
+   8          //========================================================================
+   9          // 函数: void ISP_Disable(void)
+  10          // 描述: 禁止访问ISP/IAP.
+  11          // 参数: non.
+  12          // 返回: non.
+  13          // 版本: V1.0, 2012-10-22
+  14          //========================================================================
+  15          void  DisableEEPROM(void)
+  16          {
+  17   1        ISP_CONTR = 0;      //禁止ISP/IAP操作
+  18   1        ISP_CMD   = 0;      //去除ISP/IAP命令
+  19   1        ISP_TRIG  = 0;      //防止ISP/IAP命令误触发
+  20   1        ISP_ADDRH = 0xff;   //清0地址高字节
+  21   1        ISP_ADDRL = 0xff;   //清0地址低字节，指向非EEPROM区，防止误操作
+  22   1      }
+  23          
+  24          ////========================================================================
+  25          //// 函数: void EEPROM_read_n(u16 EE_address,u8 *DataAddress,u16 number)
+  26          //// 描述: 从指定EEPROM首地址读出n个字节放指定的缓冲.
+  27          //// 参数: EE_address:  读出EEPROM的首地址.
+  28          ////       DataAddress: 读出数据放缓冲的首地址.
+  29          ////       number:      读出的字节长度.
+  30          //// 返回: non.
+  31          //// 版本: V1.0, 2012-10-22
+  32          ////========================================================================
+  33          
+  34          //void EEPROM_read_n(u16 EE_address,u8 *DataAddress,u16 number)
+  35          //{
+  36          //  EA = 0;   //禁止中断
+  37          //  ISP_CONTR = (ISP_EN + ISP_WAIT_FREQUENCY);  //设置等待时间，允许ISP/IAP操作，送一次就够
+  38          //  ISP_READ();                 //送字节读命令，命令不需改变时，不需重新送命令
+  39          //  do
+  40          //  {
+  41          //    ISP_ADDRH = EE_address / 256;   //送地址高字节（地址需要改变时才需重新送地址）
+  42          //    ISP_ADDRL = EE_address % 256;   //送地址低字节
+  43          //    ISP_TRIG();             //先送5AH，再送A5H到ISP/IAP触发寄存器，每次都需要如此
+  44          //                      //送完A5H后，ISP/IAP命令立即被触发启动
+  45          //                      //CPU等待IAP完成后，才会继续执行程序。
+  46          //    _nop_();
+  47          //    *DataAddress = ISP_DATA;      //读出的数据送往
+  48          //    EE_address++;
+  49          //    DataAddress++;
+  50          //  }while(--number);
+  51          
+  52          //  DisableEEPROM();
+  53          //  EA = 1;   //重新允许中断
+C51 COMPILER V9.54   EEPROM                                                                05/20/2020 10:08:50 PAGE 2   
+
+  54          //}
+  55          
+  56          
+  57          /******************** 扇区擦除函数 *****************/
+  58          //========================================================================
+  59          // 函数: void EEPROM_SectorErase(u16 EE_address)
+  60          // 描述: 把指定地址的EEPROM扇区擦除.
+  61          // 参数: EE_address:  要擦除的扇区EEPROM的地址.
+  62          // 返回: non.
+  63          // 版本: V1.0, 2013-5-10
+  64          //========================================================================
+  65          void EEPROM_SectorErase(u16 EE_address)
+  66          {
+  67   1        EA = 0;   //禁止中断
+  68   1                            //只有扇区擦除，没有字节擦除，512字节/扇区。
+  69   1                            //扇区中任意一个字节地址都是扇区地址。
+  70   1        ISP_ADDRH = EE_address / 256;     //送扇区地址高字节（地址需要改变时才需重新送地址）
+  71   1        ISP_ADDRL = EE_address % 256;     //送扇区地址低字节
+  72   1        ISP_CONTR = (ISP_EN + ISP_WAIT_FREQUENCY);  //设置等待时间，允许ISP/IAP操作，送一次就够
+  73   1        ISP_ERASE();              //送扇区擦除命令，命令不需改变时，不需重新送命令
+  74   1        ISP_TRIG();
+  75   1        _nop_();
+  76   1        DisableEEPROM();
+  77   1        EA = 1;   //重新允许中断
+  78   1      }
+  79          
+  80          ////========================================================================
+  81          //// 函数: void EEPROM_write_n(u16 EE_address,u8 *DataAddress,u16 number)
+  82          //// 描述: 把缓冲的n个字节写入指定首地址的EEPROM.
+  83          //// 参数: EE_address:  写入EEPROM的首地址.
+  84          ////       DataAddress: 写入源数据的缓冲的首地址.
+  85          ////       number:      写入的字节长度.
+  86          //// 返回: non.
+  87          //// 版本: V1.0, 2012-10-22
+  88          ////========================================================================
+  89          //void EEPROM_write_n(u16 EE_address,u8 *DataAddress,u16 number)
+  90          //{
+  91          //  EA = 0;   //禁止中断
+  92          
+  93          //  ISP_CONTR = (ISP_EN + ISP_WAIT_FREQUENCY);  //设置等待时间，允许ISP/IAP操作，送一次就够
+  94          //  ISP_WRITE();              //送字节写命令，命令不需改变时，不需重新送命令
+  95          //  do
+  96          //  {
+  97          //    ISP_ADDRH = EE_address / 256;   //送地址高字节（地址需要改变时才需重新送地址）
+  98          //    ISP_ADDRL = EE_address % 256;   //送地址低字节
+  99          //    ISP_DATA  = *DataAddress;     //送数据到ISP_DATA，只有数据改变时才需重新送
+ 100          //    ISP_TRIG();
+ 101          //    _nop_();
+ 102          //    EE_address++;
+ 103          //    DataAddress++;
+ 104          //  }while(--number);
+ 105          
+ 106          //  DisableEEPROM();
+ 107          //  EA = 1;   //重新允许中断
+ 108          //}
+ 109          
+ 110          
+ 111          
+ 112          
+ 113          //*****************************************************************下面不是原来的库函数*******************
+             -*******/
+ 114          
+C51 COMPILER V9.54   EEPROM                                                                05/20/2020 10:08:50 PAGE 3   
+
+ 115          
+ 116          
+ 117          
+ 118          //========================================================================
+ 119          // 函数: void EEPROM_write_n(u16 EE_address,u8 *DataAddress,u16 number)
+ 120          // 描述: 把缓冲的n个字节写入指定首地址的EEPROM.
+ 121          // 参数: EE_address:  写入EEPROM的首地址.
+ 122          //       DataAddress: 写入源数据的缓冲的首地址.
+ 123          //       number:      写入的字节长度.
+ 124          // 返回: non.
+ 125          // 版本: V1.0, 2012-10-22
+ 126          //========================================================================
+ 127          void  EEPROM_write_n(u16 addr,u8 dat)//写函数
+ 128          {
+ 129   1         // EA = 1;   //禁止中断
+ 130   1      
+ 131   1          ISP_CONTR = (ISP_EN + ISP_WAIT_FREQUENCY);  //设置等待时间，允许ISP/IAP操作，送一次就够
+ 132   1          ISP_WRITE();              //送字节写命令，命令不需改变时，不需重新送命令
+ 133   1          ISP_ADDRH = addr / 256;   //送地址高字节（地址需要改变时才需重新送地址）
+ 134   1          ISP_ADDRL = addr % 256;   //送地址低字节
+ 135   1          ISP_DATA  = dat;      //送数据到ISP_DATA，只有数据改变时才需重新送
+ 136   1          //ISP_TRIG();
+ 137   1          ISP_CMD=2;//写字节模式
+ 138   1          ISP_TRIG = 0x5a;                //写触发命令(0x5a)
+ 139   1          ISP_TRIG = 0xa5;                //写触发命令(0xa5)
+ 140   1          _nop_();
+ 141   1          DisableEEPROM();
+ 142   1          //EA = 0;   //重新允许中断
+ 143   1      }
+ 144          
+ 145          //========================================================================
+ 146          // 函数: void EEPROM_read_n(u16 EE_address,u8 *DataAddress,u16 number)
+ 147          // 描述: 从指定EEPROM首地址读出n个字节放指定的缓冲.
+ 148          // 参数: EE_address:  读出EEPROM的首地址.
+ 149          //       DataAddress: 读出数据放缓冲的首地址.
+ 150          //       number:      读出的字节长度.
+ 151          // 返回: non.
+ 152          // 版本: V1.0, 2012-10-22
+ 153          //========================================================================
+ 154          
+ 155          u8 EEPROM_read_n(u16 DataAddress)//读函数
+ 156          {
+ 157   1        u8 dat;
+ 158   1        EA = 1;   //禁止中断
+ 159   1        ISP_CONTR = (ISP_EN + ISP_WAIT_FREQUENCY);  //设置等待时间，允许ISP/IAP操作，送一次就够
+ 160   1        ISP_READ();                 //送字节读命令，命令不需改变时，不需重新送命令
+ 161   1      //  do
+ 162   1      //  {
+ 163   1        //  IAP_CMD = CMD_READ;             //设置IAP命令
+ 164   1          ISP_ADDRH = DataAddress / 256;    //送地址高字节（地址需要改变时才需重新送地址）
+ 165   1          ISP_ADDRL = DataAddress % 256;    //送地址低字节
+ 166   1        
+ 167   1          ISP_CMD=1;//写字节模式
+ 168   1          ISP_TRIG = 0x5a;                //写触发命令(0x5a)
+ 169   1          ISP_TRIG = 0xa5;                //写触发命令(0xa5)
+ 170   1        //  ISP_TRIG();             //先送5AH，再送A5H到ISP/IAP触发寄存器，每次都需要如此
+ 171   1                            //送完A5H后，ISP/IAP命令立即被触发启动
+ 172   1                            //CPU等待IAP完成后，才会继续执行程序。
+ 173   1          _nop_();
+ 174   1          dat  = ISP_DATA;      //读出的数据送往等待ISP/IAP/EEPROM操作完成
+ 175   1      //    EE_address++;
+ 176   1      //  DataAddress++;
+C51 COMPILER V9.54   EEPROM                                                                05/20/2020 10:08:50 PAGE 4   
+
+ 177   1      //  }while(--number);
+ 178   1          
+ 179   1        DisableEEPROM();
+ 180   1        
+ 181   1        
+ 182   1       // EA = 1;   //重新允许中断
+ 183   1        return dat;  
+ 184   1      }
+ 185          
+ 186          
+ 187          
+ 188          
+ 189          
+ 190          
+ 191          
+ 192          
+ 193          
+ 194          
+ 195          
+ 196          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    115    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,163 @@
+C51 COMPILER V9.60.0.0   SLAVECONTROL                                                      05/16/2020 11:23:54 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE SLAVECONTROL
+OBJECT MODULE PLACED IN SlaveControl.obj
+COMPILER INVOKED BY: F:\keil c51\C51\BIN\C51.EXE procedure\SlaveControl.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PR
+                    -INT(.\Listings\SlaveControl.lst) TABS(2) OBJECT(SlaveControl.obj)
+
+line level    source
+
+   1          #include "SlaveControl.h"
+   2          
+   3          
+   4          
+   5          
+   6          /**********************************************************************************/
+   7          //名称：void void SlaveControl()
+   8          //功能：从控到主控数据包/上传
+   9          //参数：帧头+包长+识别码+功能码(0x71数据流)+数据段+效验码+帧尾
+  10          //       TX1_Buffer：发送缓冲数组
+  11          //       RLED：条件判断将值存入发送缓冲数组
+  12          //返回值：void
+  13          //--------------------------------
+  14          //作者：XiongXiaoping   
+  15          //修改日期：2020/05/07
+  16          //修改内容：数据采集存入发送缓冲数组
+  17          //----------------------------
+  18          /**********************************************************************************/
+  19          u8 Buffer[12];
+*** ERROR C132 IN LINE 19 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+  20          //void SlaveControl()
+  21          //{
+  22          //    TX1_Buffer[0]=0xAA;  //帧头
+  23          //    TX1_Buffer[1]=0x55;  //帧头
+  24          //    
+  25          //    TX1_Buffer[2]=0x17;   //数据长度
+  26          //      
+  27          //    TX1_Buffer[3]=0x20;    //设备发送设备
+  28          //    TX1_Buffer[4]=0x21;    //本地设备发送给设备
+  29          //      
+  30          //    TX1_Buffer[5]=0x00;    //未要求应答
+  31          //    TX1_Buffer[6]=0x71;    //数据流方向
+  32          //      
+  33          //    
+  34          //      
+  35          //    TX1_Buffer[7]=(RLED1==ON)?0x01:0x00;
+  36          //    TX1_Buffer[8]=(RLED3==ON)?0x01:0x00;  //红灯状态
+  37          //    TX1_Buffer[9]=(RLED5==ON)?0x01:0x00;
+  38          //    
+  39          //    TX1_Buffer[10]=(GLED1==ON)?0x01:0x00;
+  40          //    TX1_Buffer[11]=(GLED3==ON)?0x01:0x00; //绿灯状态
+  41          //    TX1_Buffer[12]=(GLED5==ON)?0x01:0x00;
+  42          //    
+  43          //    TX1_Buffer[13]=(Cup1==1)?0x01:0x00;
+  44          //    TX1_Buffer[14]=(Cup3==1)?0x01:0x00; //水杯有无状态
+  45          //    TX1_Buffer[15]=(Cup5==1)?0x01:0x00;
+  46          //    
+  47          //    TX1_Buffer[16]=(Water1Sensor==1)?0x01:0x00;
+  48          //    TX1_Buffer[17]=(Water3Sensor==1)?0x01:0x00; //无有水检测
+  49          //    TX1_Buffer[18]=(Water5Sensor==1)?0x01:0x00;
+  50          //   
+  51          //    TX1_Buffer[19]=(Pump1==1)?0x01:0x00;
+  52          //    TX1_Buffer[20]=(Pump3==1)?0x01:0x00;  //泵状态检测
+  53          //    TX1_Buffer[21]=(Pump5==1)?0x01:0x00;
+C51 COMPILER V9.60.0.0   SLAVECONTROL                                                      05/16/2020 11:23:54 PAGE 2   
+
+  54          //    
+  55          //    TX1_Buffer[22]=(EXValve1==1)?0x01:0x00;
+  56          //    TX1_Buffer[23]=(EXValve3==1)?0x01:0x00; //空气阀状态检测
+  57          //    TX1_Buffer[24]=(EXValve5==1)?0x01:0x00;
+  58          
+  59          //    TX1_Buffer[25]=(CapSensor==1)?0x01:0x00;  //5V电压控制
+  60          //    TX1_Buffer[26]=0x00;
+  61          //    //TX1_Buffer[26]=(ChassisLock==1)?0x01:0x00;  //机箱锁状态
+  62          //    if(RX1_Buffer[6]==0X73)
+  63          //    {
+  64          //    TX1_Buffer[27]=RX1_Buffer[8]; //5V电压控制
+  65          //    }
+  66          //    else
+  67          //    {
+  68          //      TX1_Buffer[27]=0x00;
+  69          //    }
+  70          //    TX1_Buffer[28]=CheckSumTxd(TX1_Buffer,25);//校验和
+  71          //    //TX1_Buffer[26]=0x00;  //暂时为效验码    杯子使用次数计数
+  72          //    
+  73          //    TX1_Buffer[29]=0x55;
+  74          //    TX1_Buffer[30]=0xAA;  //帧尾
+  75          //}
+  76          /**********************************************************************************/
+  77          /**********************************************************************************/
+  78          
+  79          
+  80          /**********************************************************************************/
+  81          //名称：void SlaveControlEE()
+  82          //功能：上报EEPROM剩余杯子的次数
+  83          //参数：帧头+包长+识别码+功能码(0x70数据流)+数据段+效验码+帧尾
+  84          //      
+  85          //返回值：void
+  86          //--------------------------------
+  87          //作者：XiongXiaoping   
+  88          //修改日期：2020/05/07
+  89          //修改内容：查询剩余杯子数
+  90          //----------------------------
+  91          /**********************************************************************************/
+  92          void SlaveControlEE()
+  93          {
+*** ERROR C132 IN LINE 93 OF procedure\SlaveControl.c: 'SlaveControlEE': not in formal parameter list
+*** ERROR C141 IN LINE 93 OF procedure\SlaveControl.c: syntax error near '{', expected ';'
+  94            
+  95          
+  96              Buffer[0]=0xAA;  //帧头
+*** ERROR C136 IN LINE 96 OF procedure\SlaveControl.c: invalid dimension size: [0]
+*** ERROR C244 IN LINE 96 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 96 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+  97              Buffer[1]=0x55;  //帧头
+*** ERROR C244 IN LINE 97 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 97 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+  98              
+  99              Buffer[2]=0x06;   //数据长度
+*** ERROR C244 IN LINE 99 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 99 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 100                
+ 101              Buffer[3]=0x20;    //设备发给设备
+*** ERROR C244 IN LINE 101 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 101 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 102              Buffer[4]=0x21;    //本地设备发给设备
+*** ERROR C244 IN LINE 102 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 102 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+C51 COMPILER V9.60.0.0   SLAVECONTROL                                                      05/16/2020 11:23:54 PAGE 3   
+
+ 103                
+ 104              Buffer[5]=0x00;    //未要求应答
+*** ERROR C244 IN LINE 104 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 104 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 105              Buffer[6]=0x70;    //数据流方向
+*** ERROR C244 IN LINE 105 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 105 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 106            
+ 107            
+ 108              Buffer[7]=EEPROM_read_n(0x0001);
+*** ERROR C244 IN LINE 108 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 108 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 109              Buffer[8]=EEPROM_read_n(0x0000);  //  读取杯子剩余次数
+*** ERROR C244 IN LINE 109 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 109 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 110              
+ 111            //  Buffer[9]= CheckSumTxd(TX1_Buffer,0x08);
+ 112            //  TX1_Buffer[9]=0x00; //暂时为效验码   
+ 113            
+ 114              Buffer[10]=0x55;
+*** ERROR C244 IN LINE 114 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 114 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 115              Buffer[11]=0xAA;  //帧尾
+*** ERROR C244 IN LINE 115 OF procedure\SlaveControl.c: 'Buffer': can't initialize, bad type or class
+*** ERROR C132 IN LINE 115 OF procedure\SlaveControl.c: 'Buffer': not in formal parameter list
+ 116            
+ 117          } 
+*** ERROR C141 IN LINE 117 OF procedure\SlaveControl.c: syntax error near '}', expected 'hdata'
+ 118          /**********************************************************************************/
+ 119          
+ 120          
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  27 ERROR(S)

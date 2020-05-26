@@ -1,0 +1,233 @@
+C51 COMPILER V9.54   TASKUART                                                              05/25/2020 10:34:24 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TASKUART
+OBJECT MODULE PLACED IN TaskUart.obj
+COMPILER INVOKED BY: C:\Program Files (x86)\Spring Program Files(x86)\MDK4 and MDK5\C51\BIN\C51.EXE procedure\TaskUart.c
+                    - LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\TaskUart.lst) TABS(2) OBJECT(TaskUart.obj)
+
+line level    source
+
+   1          
+   2          
+   3          #include "TaskUart.h"
+   4          
+   5          
+   6          //--------------------------º¯ÊýËµÃ÷--------------------------------------------//
+   7          //º¯Êý¹¦ÄÜ£º  Íê³É¶ÔÊý¾ÝÖ¡µÄÐ£Ñé
+   8          //Èë¿Ú²ÎÊý£º  *DATaFrame:´ýÐ£ÑéµÄÊý¾ÝÖ¡µØÖ·
+   9          //·µ»ØÖµ£º  ·µ»Ø0±íÊ¾Ð£Ñé³É¹¦£¬·µ»ØÆäËûÖµ±íÊ¾Ð£ÑéÊ§°Ü
+  10          //                      £¨1:°üÍ·´íÎó£»2:°üÎ²»ò³¤¶È´íÎó£»3:Ð£ÑéºÍ´íÎó£©
+  11          
+  12          //-------------------------º¯Êý²âÊÔ----------------------------------------//
+  13          //text1£ºÊäÈë£ºAA 55 06 20 21 00 58 FF FF 5F 55 AA    ·µ»ØÖµ£º0   ËµÃ÷£ºÊý¾ÝÖ¡Ð£Ñé³É¹¦
+  14          //text2£ºÊäÈë£ºAA 55 06 20 21 00 58 FF FF 11 55 AA    ·µ»ØÖµ£º3   ËµÃ÷£ºÐ£ÑéºÍ´íÎó
+  15          //text3£ºÊäÈë£ºAA 06 20 21 00 58 FF FF 5F 55 AA       ·µ»ØÖµ£º1   ËµÃ÷£º°üÍ·´íÎó
+  16          //text4£ºÊäÈë£ºAA 55 06 20 21 00 58 FF FF 5F 55       ·µ»ØÖµ£º2   ËµÃ÷£º°üÎ²´íÎó
+  17          //text5£ºÊäÈë£ºAA 55 04 20 21 00 58 FF FF 5F 55 AA    ·µ»ØÖµ£º2   ËµÃ÷£ºÊý¾Ý³¤¶È´íÎó
+  18          //--------------------------------
+  19          //×÷Õß£ºLiao_tingchun   
+  20          //ÐÞ¸ÄÈÕÆÚ£º2020/05/15
+  21          //ÐÞ¸ÄÄÚÈÝ£º³õ´ÎÍê³É»ù±¾¹¦ÄÜ
+  22          //----------------------------
+  23          u8 DataValidityCheck(u8 *DataFrame)
+  24          {
+  25   1        u8 i = 0,datalen = 0,Parity = 0;
+  26   1        u8 *point;
+  27   1        point = DataFrame;
+  28   1        if( (*(point) != 0xAA) || (*(point+1) != 0x55))
+  29   1          return 1;//Êý¾Ý°üÍ·´íÎó
+  30   1        
+  31   1        datalen = *(point+2);//»ñÈ¡Êý¾Ý²¿·Ö³¤¶È
+  32   1        if( (*(point+datalen+4) != 0x55) || (*(point+datalen+5) != 0xAA))
+  33   1          return 2;//Êý¾Ý°üÎ²´íÎó
+  34   1        
+  35   1        Parity = datalen;
+  36   1        for(i=3;i<datalen+3;i++)//¼ÆËãÐ£ÑéºÍ
+  37   1          Parity =Parity ^ *(point+i);//°´Î»Òì»òÔËËã
+  38   1        if(Parity != *(point+datalen+3))
+  39   1          return 3;//Ð£ÑéºÍ´íÎó
+  40   1        
+  41   1        return 0;//Ð£Ñé³É¹¦
+  42   1      }
+  43          
+  44          
+  45          //--------------------------º¯ÊýËµÃ÷--------------------------------------------//
+  46          //º¯Êý¹¦ÄÜ£º  Êý¾ÝÐ£Ñé³É¹¦ºó£¬´Ó¿Ø°åµ÷ÓÃ¸Ãº¯Êý½âÎöÊý¾Ý
+  47          //Èë¿Ú²ÎÊý£º  *DataBuff:ÐèÒª½âÎöµÄÊý¾ÝÖ¡µØÖ·
+  48          //·µ»ØÖµ£º    ÎÞ
+  49          
+  50          //--------------------------------
+  51          //×÷Õß£ºLiao_tingchun   
+  52          //ÐÞ¸ÄÈÕÆÚ£º2020/05/15
+  53          //ÐÞ¸ÄÄÚÈÝ£º³õ´ÎÍê³É»ù±¾¹¦ÄÜ
+  54          //----------------------------
+C51 COMPILER V9.54   TASKUART                                                              05/25/2020 10:34:24 PAGE 2   
+
+  55          //void DataAnalyze(u8 *DataBuff)
+  56          //{
+  57          //  u8 *point;
+  58          //  u8 i;
+  59          //  u8 data_H,data_L;
+  60          //  u8 FunctionCode = *(point+6);//¹¦ÄÜÂë
+  61          //  point = DataBuff;
+  62          //  switch(FunctionCode)
+  63          //  {
+  64          //    case 0x55:                                //Ö÷¿Ø°åÖÁ´Ó¿Ø°åµÄ¿ØÖÆÐÅÏ¢
+  65          //      for(i=0;i<26;i++)
+  66          //      MasterDataBuff[i]=*(point+6+i);//½âÎöºóÊý¾ÝÇøÄÚÈÝ¶ÔÓ¦´æ´¢µ½MsterDataBuff
+  67          //      TaskControlFlag = 1;      
+  68          //      break;
+  69          //    case 0x57:  //ÉèÖÃÏÞÖÆ³éÒº´ÎÊý
+  70          //      data_H = *(point+7);
+  71          //      data_L = *(point+8);
+  72          //      MasterDataBuff[21] = data_H;MasterDataBuff[22] = data_L; //EEPROMÈÎÎñ´ÓÕâÀï¶ÁÈ¡²¢Ð´Èë£¬Íê³ÉÉèÖÃ
+  73          //      TaskEEPROMFlag = 1;  
+  74          //     // MasterControlEE();    //±êÖ¾Î»ÖÃÎ»£¬EEPROMÈÎÎñÐ´ÈëÍê³ÉºóÇå±êÖ¾Î»
+  75          //      break;
+  76          //    case 0x58:                                                  //Ñ¯ÎÊÊ£ÓàÏÞÖÆ´ÎÊý
+  77          //      TaskUploadFlag=1;                                     //½âÎöÍê³Éºó£¬Ö±½Ó·¢ËÍ×´Ì¬Êý¾ÝÇøµÄËùÓÐÄÚÈÝ£¬»ò¶
+             -ÁÈ¡×´Ì¬Êý¾ÝÇøÖ»·¢ËÍ´ÎÊýÄÚÈÝ
+  78          //      //FramePacking(0x70,&SlaveDataBuff[TimH]);
+  79          //      break;
+  80          //    case 0x59:
+  81          //      TaskUploadFlag=2;//²éÑ¯¹¤×÷×´Ì¬
+  82          //      //FramePacking(0x71,SlaveDataBuff);
+  83          //      break;
+  84          //    case 0x5A:
+  85          //      //data_H = *(point+7);
+  86          //      data_L = *(point+8);  //Ö»ÓÃµ½ÁËµÍ8Î»Êý¾Ý
+  87          //      SlaveDataBuff[20] = data_L;//±¾µØ±£´æÊ±¼ä¼ä¸ô£¬·½±ãÖ÷¿Ø²éÑ¯ÊÇ·ñÉèÖÃ³É¹¦
+  88          //      MasterDataBuff[20] = data_L;
+  89          //      TaskUploadFlag=3;//²éÑ¯¹¤×÷×´Ì¬//ÉèÖÃÉÏ´«Ê±¼ä¼ä¸ô//TaskUploadFlag=1;//²éÑ¯¹¤×÷×´Ì¬//Ö±½ÓÐÞ¸ÄÖ÷¶¯ÉÏ´«Ê
+             -ý¾Ý¼ÆÊýÆ÷µÄãÐÖµ,»ò¼ÆÊý±äÁ¿ãÐÖµ¶ÁÈ¡MasterDataBuffµÄÖµ
+  90          //      break;
+  91          //    default:break;
+  92          //  }
+  93          //}
+  94          
+  95          void DataAnalyze(u8 *DataBuff)
+  96          {
+  97   1        u8 i=0;
+  98   1        u8 *point;
+  99   1        u8 data_H,data_L;
+ 100   1        u8 FunctionCode = *(point+6);//¹¦ÄÜÂë
+ 101   1        point = DataBuff;
+ 102   1        switch(FunctionCode)
+ 103   1        {
+ 104   2          case 0x5B://Ö÷¿Ø°åÖÁ´Ó¿Ø°åµÄ¿ØÖÆÐÅÏ¢
+ 105   2          {
+ 106   3            for(i=0;i<6;i++)
+ 107   3            {
+ 108   4              if(( *(point+7+i))!= 0x02  )
+ 109   4                MasterDataBuff[i] = *(point+7+i);//Ð´Èë6¸öLEDµÄ¿ØÖÆ×´Ì¬
+ 110   4            }
+ 111   3            for(i=0;i<7;i++)
+ 112   3            {
+ 113   4              if(( *(point+19+i))!= 0x02  )
+ 114   4                MasterDataBuff[i+12] = *(point+19+i);//Ð´Èë7¸ö¼ÌµçÆ÷µÄ¿ØÖÆ×´Ì¬
+C51 COMPILER V9.54   TASKUART                                                              05/25/2020 10:34:24 PAGE 3   
+
+ 115   4            }
+ 116   3            for(i=0;i<3;i++)
+ 117   3            {
+ 118   4              if(( *(point+30+i))!= 0x02  )
+ 119   4                MasterDataBuff[i+23] = *(point+30+i);//Ê¹ÄÜ3¸ö¿×Î»    
+ 120   4            }       
+ 121   3            TaskControlFlag = 1;
+ 122   3            break;
+ 123   3          }
+ 124   2          case 0x5C://ÉèÖÃÏÞÖÆ³éÒº´ÎÊý
+ 125   2          {
+ 126   3            data_H = *(point+7);
+ 127   3            data_L = *(point+8);
+ 128   3            MasterDataBuff[21] = data_H;
+ 129   3            MasterDataBuff[22] = data_L;//EEPROMÈÎÎñ´ÓÕâÀï¶ÁÈ¡²¢Ð´Èë£¬Íê³ÉÉèÖÃ
+ 130   3            TaskEEPROMFlag = 1;//±êÖ¾Î»ÖÃÎ»£¬EEPROMÈÎÎñÐ´ÈëÍê³ÉºóÇå±êÖ¾Î»
+ 131   3            break;
+ 132   3          }
+ 133   2          case 0x5D://Ñ¯ÎÊÊ£ÓàÏÞÖÆ´ÎÊý
+ 134   2          {
+ 135   3            FramePacking(0x70,&SlaveDataBuff [21]);//Ö±½ÓÉÏ´«
+ 136   3            //TaskUploadFlag = 1;//ÖÃÎ»¸ÃÉÏ´«ÈÎÎñ
+ 137   3            break;
+ 138   3          }
+ 139   2          case 0x5E://²éÑ¯¹¤×÷×´Ì¬
+ 140   2          {
+ 141   3            TaskUploadFlag = 1;//ÖÃÎ»¸ÃÉÏ´«ÈÎÎñ
+ 142   3            break;
+ 143   3          }
+ 144   2          case 0x60://ÉèÖÃÉÏ´«Ê±¼ä¼ä¸ô
+ 145   2          {
+ 146   3            data_H = *(point+7);
+ 147   3            data_L = *(point+8);  //Ö»ÓÃµ½ÁËµÍ8Î»Êý¾Ý
+ 148   3            SlaveDataBuff[20] = data_L;//±¾µØ±£´æÊ±¼ä¼ä¸ô
+ 149   3            MasterDataBuff[20] = data_L;
+ 150   3            //TaskUploadFlag=3;
+ 151   3            break;
+ 152   3          }
+ 153   2          default:break;
+ 154   2        } 
+ 155   1      }
+ 156          
+ 157          //--------------------------º¯ÊýËµÃ÷--------------------------------------------//
+ 158          //º¯Êý¹¦ÄÜ£º  ½«Êý¾Ý°´ÕÕÐ­Òé´ò°ü³ÉÖ¡²¢·¢ËÍ
+ 159          //Èë¿Ú²ÎÊý£º  FunctionCode:¹¦ÄÜÂë
+ 160          //            *DataBuff:ÐèÒª·¢ËÍµÄÊý¾ÝÇøµÄÄÚÈÝ
+ 161          //·µ»ØÖµ£º    ÎÞ
+ 162          
+ 163          //--------------------------------
+ 164          //×÷Õß£ºLiao_tingchun   
+ 165          //ÐÞ¸ÄÈÕÆÚ£º2020/05/16
+ 166          //ÐÞ¸ÄÄÚÈÝ£º³õ´ÎÍê³É»ù±¾¹¦ÄÜ
+ 167          //----------------------------
+ 168          void FramePacking(u8 FunctionCode,u8 *DataBuff)
+ 169          {
+ 170   1      
+ 171   1        u8 DataLen;//Êý¾ÝÇø³¤¶È,Ö¸ÓÐÐ§µÄÊý¾Ý³¤¶È£¬²»°üº¬Éè±¸±àÂëºÍ¹¦ÄÜÂë
+ 172   1        u8 *point = DataBuff;
+ 173   1        u8 Parity;
+ 174   1        u8 i=0; //Êý¾Ý´®ÏÂ±ê
+ 175   1        u8 SendStr[MaxSendStr] =    //ÏÂÃæÖ»»º´æµ½Ð£ÑéÎ»Ö®Ç°
+ 176   1                          {0xAA,0x55,//Êý¾Ý°üÍ·
+C51 COMPILER V9.54   TASKUART                                                              05/25/2020 10:34:24 PAGE 4   
+
+ 177   1                          0xFF,//Êý¾Ý¶Î³¤¶È¡¾MCUµÄÎÊÌâÂð£¿³õÊ¼»¯²»ÄÜÓÃ±äÁ¿¸³Öµ£¬ºóÃæÖØÐ´Ò»´Î°É¡¿
+ 178   1                          0x21,0x20,//·¢ËÍºÍ½ÓÊÕ·½Ê¶±ðÂë
+ 179   1                          0x00,//ÊÇ·ñÐèÒªÓ¦´ð
+ 180   1                          0xFF//¹¦ÄÜÂë£¬ÓÉ×ÜÐ­ÒéÎÄµµ¹æ¶¨¡¾MCUµÄÎÊÌâÂð£¿³õÊ¼»¯²»ÄÜÓÃ±äÁ¿¸³Öµ£¬ºóÃæÖØÐ´Ò»´Î°É¡¿
+ 181   1                          };
+ 182   1        if(FunctionCode == 0x70)  DataLen =2;
+ 183   1        else if(FunctionCode == 0x71) DataLen =23;  
+ 184   1        SendStr[2] = DataLen+4;//ÖØÐÂ°Ñ³¤¶ÈÐ´µ½Êý¾ÝÖ¡ÀïÃæ£¬+4
+ 185   1        SendStr[6] = FunctionCode;//ÖØÐÂ°Ñ¹¦ÄÜÂëÐ´µ½Êý¾ÝÖ¡ÀïÃæ                
+ 186   1        for(i=0;i<DataLen;i++)              
+ 187   1              SendStr[i+7] = *(point+i);  //Ìí¼ÓÊý¾ÝÇø  
+ 188   1                          
+ 189   1        Parity = SendStr[2];
+ 190   1        for(i=3;i<SendStr[2]+3;i++)//¼ÆËãÐ£ÑéÊý¾Ý
+ 191   1          Parity = Parity^SendStr[i];//°´Î»Òì»òÔËËã
+ 192   1                          
+ 193   1        SendStr[i]=Parity;i++;//Ìí¼ÓÐ£ÑéÊý¾Ý
+ 194   1        SendStr[i]=0x55;i++;
+ 195   1        SendStr[i]=0xAA;i++;//Ìí¼ÓÊý¾Ý°üÎ²²¿
+ 196   1      //Êý¾ÝÖ¡´ò°üÍê±Ï
+ 197   1      
+ 198   1        SendDataLen(SendStr,DataLen+10);//·¢ËÍÊý¾Ý°ü
+ 199   1      }
+ 200          
+ 201          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    822    ----
+   CONSTANT SIZE    =     50    ----
+   XDATA SIZE       =   ----      70
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

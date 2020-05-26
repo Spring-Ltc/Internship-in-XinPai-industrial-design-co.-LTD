@@ -1,0 +1,154 @@
+C51 COMPILER V9.54   TASKEEPROM                                                            05/20/2020 10:08:50 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE TASKEEPROM
+OBJECT MODULE PLACED IN .\Objects\TaskEEPROM.obj
+COMPILER INVOKED BY: C:\Program Files (x86)\Spring Program Files(x86)\MDK4 and MDK5\C51\BIN\C51.EXE USER\TaskEEPROM.c CO
+                    -MPACT ROM(COMPACT) OPTIMIZE(8,SPEED) BROWSE INCDIR(.\USER;.\FWLIB) DEBUG OBJECTEXTEND PRINT(.\Listings\TaskEEPROM.lst) T
+                    -ABS(2) OBJECT(.\Objects\TaskEEPROM.obj)
+
+line level    source
+
+   1          
+   2          
+   3          #include "TaskEEPROM.h"
+   4          #include "EEPROM.h"
+   5          
+   6          
+   7          ///**********************************************************************************/
+   8          ////名称：void MasterControlEE()
+   9          ////功能：修改剩余杯子次数函数
+  10          ////参数：帧头+包长+识别码+功能码(0x55数据流)+数据段+效验码+帧尾  
+  11          ////      EEPROM_SectorErase:删除扇区函数
+  12          ////      EEPROM_write_n:写入一个字节函数
+  13          ////      _nop_():延时
+  14          ////      SlaveControlEE()：发送函数数据调用
+  15          ////返回值：void
+  16          ////--------------------------------
+  17          ////作者：XiongXiaoping   
+  18          ////修改日期：2020/05/07
+  19          ////修改内容：
+  20          ////----------------------------
+  21          ///**********************************************************************************/
+  22          //void TaskEEPROM(void)
+  23          //{
+  24          //  u16 DoubleTempvalue;
+  25          //      if((MasterDataBuff[21]*256+MasterDataBuff[22])<0xfffa)  
+  26          //        {
+  27          //          DoubleTempvalue = (MasterDataBuff[21]*256+(MasterDataBuff[22]+0x03));
+  28          //          EEPROM_SectorErase(0x0000); 
+  29          //          EEPROM_write_n(0x0000,(DoubleTempvalue%256));//低八位写入一个扇区单元
+  30          //          _nop_();
+  31          //          EEPROM_write_n(0x0001,(DoubleTempvalue/256));//高八位写入一个扇区单元
+  32          //          _nop_();
+  33          //         
+  34          //        }
+  35          //        else if((MasterDataBuff[21]*256+MasterDataBuff[22])>=0xfffa)  
+  36          //        {
+  37          //          EEPROM_SectorErase(0x0000); 
+  38          //          EEPROM_write_n(0x0000,MasterDataBuff[22]);//低八位写入一个扇区单元
+  39          //          _nop_();
+  40          //          EEPROM_write_n(0x0001,MasterDataBuff[21]);//高八位写入一个扇区单元
+  41          //          _nop_();
+  42          //        }
+  43          
+  44          //}
+  45          
+  46          
+  47          ///**********************************************************************************/
+  48          ////名称：Confine()
+  49          ////功能：触发（拿走）杯子减一次剩余杯子
+  50          ////参数：u16  SurplusCount：拿走杯子触发标志杯子计数（抽液一次完成）
+  51          ////返回值：将值写入EEPROMEEPROM_write_n(0x0000)和EEPROM_write_n(0x0001）；
+  52          ////--------------------------------
+  53          ////作者：XiongXiaoping   
+C51 COMPILER V9.54   TASKEEPROM                                                            05/20/2020 10:08:50 PAGE 2   
+
+  54          ////修改日期：2020/05/09
+  55          ////修改内容：数据使用后触发用了一次（杯子），减1后存入缓冲数组，并存到EEPROM
+  56          ////----------------------------
+  57          ///**********************************************************************************/
+  58          //void Confine()
+  59          //{
+  60          //  if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x03)   //读取剩余杯子次数
+  61          //  {
+  62          //      DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+  63          //      SurplusCount=0;//写入完成后，清零方便下次写入
+  64          //      if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00) //在剩余3次时是否判断这次已经使用完了
+  65          //      {
+  66          //          //RX1_Buffer[26]=0x00; //清空数组
+  67          //          Cup1Eff=0;  //标志置为0
+  68          //        //  RX1_Buffer[27]=0x00;  //清空数组
+  69          //          Cup3Eff=0;  //标志置为0
+  70          //        //  RX1_Buffer[28]=0x00; //清空数组
+  71          //          Cup5Eff=0;  //标志置为0
+  72          //       }            
+  73          //    }         
+  74          //  else  if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x02)   //读取剩余杯子次数
+  75          //  {
+  76          //      //RX1_Buffer[28]=0x00;
+  77          //      Cup5Eff=0;
+  78          //      DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+  79          //      SurplusCount=0;//写入完成后，清零方便下次写入
+  80          //      if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00) //在剩余2次时是否判断这次已经使用完了
+  81          //      {
+  82          //          //RX1_Buffer[26]=0x00; //清空数组
+  83          //          Cup1Eff=0;  //标志置为0
+  84          //          //RX1_Buffer[27]=0x00;  //清空数组
+  85          //          Cup3Eff=0;  //标志置为0
+  86          //        //  RX1_Buffer[28]=0x00; //清空数组
+  87          //          Cup5Eff=0;  //标志置为0 
+  88          //      }           
+  89          //   }
+  90          //  else if ((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x01)
+  91          //  {
+  92          //    //  RX1_Buffer[27]=0x00;
+  93          //      Cup3Eff=0;
+  94          //      //RX1_Buffer[28]=0x00;
+  95          //      Cup5Eff=0;
+  96          //      DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+  97          //      SurplusCount=0;//写入完成后，清零方便下次写入 
+  98          //      if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00)//在剩余1次时是否判断这次已经使用完了
+  99          //      {
+ 100          //      //RX1_Buffer[26]=0x00;
+ 101          //      Cup1Eff=0;
+ 102          //      //RX1_Buffer[27]=0x00;
+ 103          //      Cup3Eff=0;
+ 104          //      //RX1_Buffer[28]=0x00;
+ 105          //      Cup5Eff=0;
+ 106          //    }   
+ 107          //  }
+ 108          //  else if((EEPROM_read_n(0x0001)*256+EEPROM_read_n(0x0000))<=0x00)
+ 109          //  {
+ 110          //      //RX1_Buffer[26]=0x00;
+ 111          //      Cup1Eff=0;
+ 112          //      //RX1_Buffer[27]=0x00;
+ 113          //      Cup3Eff=0;
+ 114          //      //RX1_Buffer[28]=0x00;
+ 115          //      Cup5Eff=0;
+C51 COMPILER V9.54   TASKEEPROM                                                            05/20/2020 10:08:50 PAGE 3   
+
+ 116          //   }    
+ 117          //  else
+ 118          //  {
+ 119          //    DataProcessing(SurplusCount);//将计数的杯子使用次数传给函数写入EEPROM
+ 120          //    SurplusCount=0;//写入完成后，清零方便下次写入 
+ 121          //  }   
+ 122          //}   
+ 123          
+ 124          
+ 125          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

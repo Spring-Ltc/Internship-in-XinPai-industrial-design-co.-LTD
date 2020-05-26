@@ -1,0 +1,12 @@
+"main.obj",
+"EEPROM.obj",
+"GPIO.obj",
+"timer.obj",
+"USART1.obj",
+"CupDet.obj",
+"TimeInterval.obj",
+"MasterControl.obj",
+"TaskUart.obj",
+"ResidueDegree.obj" 
+TO "MasterControl" 
+PRINT(".\Listings\MasterControl.m51") RAMSIZE(256) 

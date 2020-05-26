@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include  <string.h>
+
+#define DataLen 245
+
+unsigned char savebuff[DataLen]={0,0,0,0,0,0,0,0,0,0};
+void ControlSlave(unsigned char CUPx,unsigned char CupDisEnable,unsigned char PumpDisEnable);
+
+
+
+
+
+int main()
+{
+
+	unsigned char res,lastdata;
+	int savelen = 35;
+	int i=0;
+	int count=0;
+	int state=0;
+
+    puts("主从控制功能测试\r\n");
+	puts("\r\n");
+
+	ControlSlave(0x01,0x01,0x00);//使能第一个杯子，关闭泵
+	printf("\r\n发送的数据为：\t");
+	for(i=0;i<savelen;i++)
+		printf("%02x ",savebuff[i]);
+	puts("\r\n\r\n\r\n");
+
+
+
+    system("pause");
+    return 0;
+}
+
+
+
+
+//---------------------函数说明--------------------------------------------//
+//函数功能：	主控板向从控板发送控制信息
+//入口参数：	CUPx：控制哪一个杯座
+//				CupDisEnable：控制杯孔的使能，0x00失能，0x01使能，0x02维持原状态
+//				PumpDisEnable：控制杯座对应的泵的使能，0x00开启，0x01关闭，0x02维持原状态
+//返回值：		无
+
+//--------------------------------
+//作者：Liao_tingchun		
+//修改日期：2020/05/13
+//修改内容：初次完成基本功能
+//--------------------------------
+void ControlSlave(unsigned char CUPx,unsigned char CupDisEnable,unsigned char PumpDisEnable)
+{
+	unsigned char i=0;	//数据串下标
+	unsigned char datalen = 0x1E;//该条指令的数据区长度
+	unsigned char Parity = datalen;
+	 unsigned char SendStr[DataLen] =		//下面只缓存到校验位之前
+										{0xAA,0x55,//数据包头
+										0x1E,//数据段长度
+										0x20,0x21,
+										0x00,//是否需要应答
+										0x5B,//功能码，由总协议文档规定
+										0x02,0x02,0x02,0x02,0x02,0x02, 0x02,0x02,0x02,0x02,0x02,0x02,//不受控的对象，6个LED和6个传感器状态
+										0x02,0x02,0x02,//三个泵对应的继电器
+										0x02,0x02,0x02,//三个阀对应的继电器
+										0x02,0x02,0x02,0x02,0x02,//其他可控对象，暂时没有使用
+										0x02,0x02,0x02//三个杯子的使能控制
+										};
+				
+		SendStr[18+CUPx] = PumpDisEnable;	
+		SendStr[28+CUPx] = CupDisEnable;
+		//重新写状态控制完毕
+								
+	for(i=3;i<32;i++)//计算校验数据//3+ 26+4 = 33
+		Parity   =Parity^SendStr[i];//按位异或运算
+										
+	SendStr[i]=Parity;i++;//添加校验数据
+	SendStr[i]=0x55;i++;
+	SendStr[i]=0xAA;i++;//添加数据包尾部
+//数据帧打包完毕
+
+	for(i=0;i<40;i++)//计算校验数据//3+ 26+4 = 33
+		savebuff[i] =SendStr[i];//
+
+}
+	

@@ -1,0 +1,72 @@
+C51 COMPILER V9.60.0.0   TIMEINTERVAL                                                      05/19/2020 12:05:04 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE TIMEINTERVAL
+OBJECT MODULE PLACED IN TimeInterval.obj
+COMPILER INVOKED BY: F:\keil c51\C51\BIN\C51.EXE procedure\TimeInterval.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXT
+                    -END PRINT(.\Listings\TimeInterval.lst) TABS(2) OBJECT(TimeInterval.obj)
+
+line level    source
+
+   1          
+   2          #include "TimeInterval.h"
+   3          
+   4          //u8  idata TX1_Buffer[COM_TX1_Lenth];  //发送缓冲
+   5          //u8  idata RX1_Buffer[COM_RX1_Lenth];  //接收缓冲
+   6          
+   7          extern T0_500MS2,T0_100MS10,T1_1MS1,T0_10MS2,MS3,T0_100MS1,T2_10MS2  ;  //其他文件定义的变量(外部变量)
+   8          extern u8 TaskUploadFlag;//任务3：数据上传任务
+   9          /**********************************************************************************/
+  10          //名称：void TimeInterval()
+  11          //功能：查询数据上报时间间隔
+  12          //参数： 
+  13          //返回值：返回值为控制定时器中断触发；void
+  14          //--------------------------------
+  15          //作者：XiongXiaoping   
+  16          //修改日期：2020/05/09
+  17          //修改内容：设置从控板的主动上传数据的时间间隔
+  18          //----------------------------
+  19          /**********************************************************************************/
+  20          void TimeInterval()
+  21          {
+  22   1                 u8 vt1=0;
+  23   1        //         u8 i;
+  24   1      
+  25   1                if(MasterDataBuff[20]!=0x00)  //功能标志）
+  26   1                {
+  27   2               if((MasterDataBuff[20]<=0x64)) //功能标志（控制上报时间快慢）
+  28   2                {
+  29   3                  if( T0_500MS2)//100ms
+  30   3                  { 
+  31   4                    vt1++;
+  32   4                    T0_500MS2=0;
+  33   4                    if(vt1>=(10*(u8)(MasterDataBuff[20])))
+  34   4                    {
+  35   5                    vt1=0;
+  36   5                    FramePacking(0x71,SlaveDataBuff);
+  37   5                    }
+  38   4                   }          
+  39   3                }
+  40   2              }
+  41   1                  
+  42   1      }         
+  43          
+  44          
+  45          /**********************************************************************************/  
+  46          /**********************************************************************************/
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     71    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+C51 COMPILER V9.60.0.0   TIMEINTERVAL                                                      05/19/2020 12:05:04 PAGE 2   
+
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

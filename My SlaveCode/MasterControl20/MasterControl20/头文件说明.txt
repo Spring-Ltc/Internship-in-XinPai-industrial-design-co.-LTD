@@ -1,0 +1,10 @@
+#include "config.h"  //定义主要的全局变量，引脚等变量
+#include "timer.h"   //定时器函数
+#include "GPIO.h"   //引脚输入输出模式函数
+#include "USART1.h"//串口1函数
+#include "eeprom.h"  //存储剩余杯子次数 ；掉电可保存
+#include "intrins.h"  //延时等函数
+#include "delay.h"   //500ms 1000ms软件延时
+#include "CupDet.h"  //杯孔状态以及工作控制函数
+#include "TaskUart.h"//串口接收数据解析处理函数
+#include "ResidueDegree.h" //对剩余杯子次数限制和写入限制操作函数
